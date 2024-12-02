@@ -1,6 +1,9 @@
 ---
-title: "US SARS-CoV-2 Variant Nowcast Hub weekly report"
-output: html_document
+title: "SARS-CoV-2 Variant Nowcast Hub weekly report"
+date: "`r format(Sys.Date(), format = '%B %d, %Y')`"
+output: 
+  html_document:
+    keep_md: yes
 ---
 
 
@@ -48,12 +51,14 @@ clade_labels <- readr::read_delim("https://raw.githubusercontent.com/nextstrain/
 ```
 
 
-## Updates for `r this_ref_date`
+## Summary of submitted forecasts
 
-The Variant Nowcast Hub collects new predictions weekly from participating teams.
+[Some summary about which clades were predicted and which teams submitted.]
 
 
-## Forecast plots
+## Plots of data and nowcasts
+
+The interactive plots below summarize recent data and predictions of SARS-CoV-2 clades. Variants are labeled using both the correspnding Nextstrain clade and the associated pango lineage (e.g., "24A (JN.1)"). Recent observations are summaries of genomic sequence metadata from GenBank, made available as [the "full open" datasets from Nextstrain](https://docs.nextstrain.org/projects/ncov/en/latest/reference/remote_inputs.html#remote-inputs-open-files). The points representing observed clade frequencies in a given week are transparent black dots. The size of the point corresponds to the total number of sequences (of all clades) in that state for that week (the specific number is visible when you hover on a specific point). Note that proportions from the most recently observed week are likely to change as new data arrives in future weeks. Points representing the clade proportion from each prediction model are shown as open circles of different colors. For simplicity, we show just the prediction from the Saturday from each week.
 
 ```{r get-target-data}
 ## gather target data
@@ -61,7 +66,7 @@ target_data_filename <- paste0("https://covid-clade-counts.s3.amazonaws.com/", t
 target_data <- arrow::read_parquet(target_data_filename) |> 
   dplyr::mutate(clade = ifelse(clade %in% clades_predicted, clade, "other")) |> 
   dplyr::filter(date >= this_ref_date - 75, ## fixing min date for plotting
-                date <= this_ref_date - 40 ## fixing max date to remove under-reported recent data
+                date <= this_ref_date ## fixing max date to remove under-reported recent data
                 ) |> 
   dplyr::group_by(date) |> 
   tidyr::complete(location, clade, fill=list(count=0)) |> 
@@ -87,10 +92,16 @@ target_data_wk <- target_data |>
 ```
 
 ```{r get-forecast-data}
+## limit target_dates to only Saturdays
+saturdays <- seq.Date(from = this_ref_date -25, ## 4 Saturdays ago
+                      to = this_ref_date + 10, ## 2 Saturdays hence
+                      by = "7 days")
+
 ## gather hub data
 hub_con <- connect_hub(hub_path = "../variant-nowcast-hub/")
 dat <- hub_con |> 
-  dplyr::filter(nowcast_date == this_ref_date) |> 
+  dplyr::filter(nowcast_date == this_ref_date,
+                target_date %in% saturdays) |> 
   collect_hub()
 
 mean_dat <- dat |> 
@@ -182,12 +193,16 @@ bscols(
   ggplotly(
     ggplot() +
       geom_point(data = shared_means, 
-                 aes(x=target_date, y=value, color=model_id), alpha = 0.4) + 
+                 aes(x=target_date, y=value, color=model_id), 
+                 shape = 1) + 
       geom_point(data = shared_target,
-                 aes(x=date, y=value, size=total)) +
+                 aes(x=date, y=value, size=total),
+                 alpha = 0.5) +
+      ## code below is not working
       # geom_smooth(data = shared_target, 
       #             aes(x=date, y=value, color=clade, weight = total),
       #             se=FALSE, method="gam") +
+      # geom_vline(xintercept=this_ref_date, linetype = 2) +
       facet_wrap(.~clade_label) +
       xlab(NULL) +
       scale_y_continuous(name = "clade proportion", limits = c(0,1)) +

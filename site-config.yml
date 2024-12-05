@@ -2,5 +2,5 @@
 hub: "reichlab/variant-nowcast-hub"
 title: "SARS-CoV-2 Variant Nowcast Hub"
 pages:
-  - "weekly-report-template.md"
+  - "report.md"
 

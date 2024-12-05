@@ -1,0 +1,226 @@
+---
+title: "Weekly report"
+date: "`r format(Sys.Date(), format = '%B %d, %Y')`"
+output: 
+  html_fragment:
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r preliminaries}
+library(hubData)
+library(ggplot2)
+library(plotly)
+library(crosstalk)
+theme_set(theme_bw())
+
+this_ref_date <- as.Date("2024-12-04")
+quantiles <- c(0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95)
+```
+
+**This report was generated on `r format(Sys.time(), tz = "UTC", format = '%B %d, %Y %H:%M:%S')`.**
+
+```{r get-predicted-clades}
+## download the metadata about the prediction tasks for the variant nowcast hub
+tasks <- jsonlite::fromJSON("https://raw.githubusercontent.com/reichlab/variant-nowcast-hub/refs/heads/main/hub-config/tasks.json")
+
+## extract the nowcast dates for each round
+nowcast_dates <- sapply(tasks$rounds$model_tasks, 
+                        function(x) unlist(x$task_ids$nowcast_date$required))
+
+## identify the index for the current round
+this_round <- which(nowcast_dates == this_ref_date)
+  
+## for the current round, extract a vector with the predicted clades
+clades_predicted <- unlist(tasks$rounds$model_tasks[[this_round]]$task_ids$clade$required)
+
+```
+
+
+```{r get-clade-labels}
+## read in a page from nextstrain that has the clade labels they use for their plots
+clade_labels <- readr::read_delim("https://raw.githubusercontent.com/nextstrain/ncov/refs/heads/master/defaults/clade_display_names.yml",
+                  col_names = c("clade", "clade_label"),
+                  delim = ": ") |> 
+  rbind(c("other", "other")) |> 
+  rbind(c("recombinant", "recombinant")) |> 
+  dplyr::filter(clade %in% clades_predicted)
+
+```
+
+
+<!-- ## Summary of submitted forecasts -->
+
+<!-- [Some summary about which clades were predicted and which teams submitted.] -->
+
+
+## Plots of data and nowcasts
+
+The interactive plots below summarize recent data and predictions of SARS-CoV-2 clades. Variants are labeled using both the correspnding Nextstrain clade and the associated pango lineage (e.g., "24A (JN.1)"). Recent observations are summaries of genomic sequence metadata from GenBank, made available as [the "full open" datasets from Nextstrain](https://docs.nextstrain.org/projects/ncov/en/latest/reference/remote_inputs.html#remote-inputs-open-files). The points representing observed clade frequencies in a given week are transparent black dots. The size of the point corresponds to the total number of sequences (of all clades) in that state for that week (the specific number is visible when you hover on a specific point). Note that proportions from the most recently observed week are likely to change as new data arrives in future weeks. Points representing the clade proportion from each prediction model are shown as open circles of different colors. For simplicity, we show just the prediction from the Saturday from each week.
+
+```{r get-target-data}
+## gather target data
+target_data_filename <- paste0("https://covid-clade-counts.s3.amazonaws.com/", this_ref_date-2, "_covid_clade_counts.parquet")
+target_data <- arrow::read_parquet(target_data_filename) |> 
+  dplyr::mutate(clade = ifelse(clade %in% clades_predicted, clade, "other")) |> 
+  dplyr::filter(date >= this_ref_date - 96, ## fixing min date for plotting
+                date <= this_ref_date ## fixing max date to remove under-reported recent data
+                ) |> 
+  dplyr::group_by(date) |> 
+  tidyr::complete(location, clade, fill=list(count=0)) |> 
+  dplyr::group_by(location, date) |> 
+  dplyr::mutate(value = count/sum(count),
+                total = sum(count))
+
+target_data_wk <- target_data |> 
+  dplyr::mutate(wday = lubridate::wday(date),
+                epiweek_end = date + 7 - wday) |>
+  dplyr::group_by(location, clade, epiweek_end) |>
+  dplyr::summarize(count = sum(count)) |>
+  dplyr::ungroup() |>
+  dplyr::group_by(location, epiweek_end) |>
+  dplyr::mutate(total = sum(count)) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(value = ifelse(total == 0, 0, count/total)) |>
+  dplyr::rename(date = epiweek_end) |>
+  dplyr::arrange(location, date, clade) |> 
+  ## round values for cleaner plotting
+  dplyr::mutate(value = round(value, 2)) |> 
+  dplyr::left_join(clade_labels)
+```
+
+```{r get-forecast-data}
+## limit target_dates to only Saturdays
+saturdays <- seq.Date(from = this_ref_date -25, ## 4 Saturdays ago
+                      to = this_ref_date + 10, ## 2 Saturdays hence
+                      by = "7 days")
+
+## gather hub data
+hub_con <- connect_hub(hub_path = arrow::s3_bucket("covid-variant-nowcast-hub"))
+dat <- hub_con |> 
+  dplyr::filter(nowcast_date == this_ref_date,
+                target_date %in% saturdays) |> 
+  collect_hub()
+
+mean_dat <- dat |> 
+  dplyr::filter(output_type == "mean")
+
+models_with_means <- unique(mean_dat$model_id)
+
+sample_dat <- dat |> 
+  dplyr::filter(output_type == "sample")
+
+mean_dat_all <- dat |> 
+  ## get means from models without means
+  dplyr::filter(output_type == "sample",
+                !(model_id %in% models_with_means)) |> 
+  dplyr::group_by(model_id, target_date, location, clade) |> 
+  dplyr::summarize(value = mean(value)) |> 
+  dplyr::mutate(output_type_id = "mean") |> 
+  ## add data from models with means and join with clade labels
+  dplyr::bind_rows(mean_dat) |> 
+  ## round values for cleaner plotting
+  dplyr::mutate(value = round(value, 2)) |> 
+  dplyr::left_join(clade_labels)
+  
+
+quantile_data <- sample_dat |> 
+  dplyr::group_by(model_id, target_date, location, clade) |> 
+      dplyr::reframe(
+        output_type_id = quantiles,
+        value = stats::quantile(.data[["value"]], 
+                                probs = quantiles, 
+                                names = FALSE)
+      ) |> 
+  dplyr::left_join(clade_labels)
+```
+
+```{r forecast-function, eval=FALSE}
+# forecast_plot <- function(quantile_data, target_data, this_location = "MA") {
+#   require(ggplot2)
+#   require(plotly)
+#   p <- ggplot() +
+#     geom_line(data = dplyr::filter(quantile_data, output_type_id == 0.5, location == this_location),
+#               aes(x=target_date, y=value, color=clade), linetype = 2) +
+#     geom_point(data = dplyr::filter(target_data, location == this_location), 
+#                aes(x=date, y=value, color=clade), alpha = 0.2) +
+#     geom_smooth(data = dplyr::filter(target_data, location == this_location), 
+#                 aes(x=date, y=value, color=clade, weight = total), se=FALSE) +
+#     facet_wrap(.~model_id)
+#   ggplotly(p)
+# }
+
+
+forecast_plot <- function(quantile_data, target_data) {
+  require(ggplot2)
+  require(plotly)
+  p <- ggplot() +
+    geom_line(data = dplyr::filter(quantile_data, output_type_id == 0.5),
+              aes(x=target_date, y=value, color=clade), linetype = 2) +
+    geom_point(data = dplyr::filter(target_data, location == "MA"), 
+               aes(x=date, y=value, color=clade), alpha = 0.2) +
+    geom_smooth(data = dplyr::filter(target_data, location == "MA"), 
+                aes(x=date, y=value, color=clade, weight = total), se=FALSE) +
+    facet_wrap(.~model_id)
+  ggplotly(p)
+}
+
+```
+
+
+```{r make-plot}
+## adapted from https://stackoverflow.com/questions/72747650/r-make-boxplot-using-crosstalk-and-ggplot2-box-plot-color-is-lost
+
+shared_quantile <- quantile_data |> 
+  dplyr::filter(output_type_id == 0.5) |> 
+  SharedData$new(~location, group = "Choose state")
+
+shared_means <- mean_dat_all |> 
+  SharedData$new(~location, group = "Choose state")
+
+shared_target <- target_data_wk |> 
+  SharedData$new(~location, group = "Choose state")
+
+bscols(
+  filter_select(id = "state", 
+                label = "State", 
+                sharedData = shared_means, 
+                group = ~location,
+                multiple = FALSE,
+                allLevels = TRUE),
+  ggplotly(
+    ggplot() +
+      geom_point(data = shared_means, 
+                 aes(x=target_date, y=value, color=model_id), 
+                 shape = 1) + 
+      geom_point(data = shared_target,
+                 aes(x=date, y=value, size=total),
+                 alpha = 0.5) +
+      ## code below is not working
+      # geom_smooth(data = shared_target, 
+      #             aes(x=date, y=value, color=clade, weight = total),
+      #             se=FALSE, method="gam") +
+      # geom_vline(xintercept=this_ref_date, linetype = 2) +
+      facet_wrap(.~clade_label) +
+      xlab(NULL) +
+      scale_y_continuous(name = "clade proportion", limits = c(0,1)) +
+      scale_color_brewer(palette = "Dark2", name = "model") +
+      scale_size_continuous(guide = "none")
+  ),
+  widths = 12
+)
+```
+
+```{js}
+// from https://stackoverflow.com/questions/67058016/how-to-set-default-values-in-filter-select-in-crosstalk-in-r-plotly
+function filter_default() {
+    document.getElementById("state").getElementsByClassName("selectized") 
+[0].selectize.setValue("MA", false);
+ }
+window.onload = filter_default;
+```
+

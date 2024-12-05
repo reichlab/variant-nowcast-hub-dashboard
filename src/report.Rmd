@@ -1,10 +1,15 @@
 ---
-title: "SARS-CoV-2 Variant Nowcast Hub weekly report"
+title: "Weekly report"
 date: "`r format(Sys.Date(), format = '%B %d, %Y')`"
 output: 
+  html_fragment:
   html_document:
     keep_md: yes
+    self_contained: false
+include-in-header:
+    file: includes/in-header.html
 ---
+
 
 
 ```{r setup, include=FALSE}
@@ -18,7 +23,7 @@ library(plotly)
 library(crosstalk)
 theme_set(theme_bw())
 
-this_ref_date <- as.Date("2024-11-20")
+this_ref_date <- as.Date("2024-12-04")
 quantiles <- c(0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95)
 ```
 
@@ -51,9 +56,9 @@ clade_labels <- readr::read_delim("https://raw.githubusercontent.com/nextstrain/
 ```
 
 
-## Summary of submitted forecasts
+<!-- ## Summary of submitted forecasts -->
 
-[Some summary about which clades were predicted and which teams submitted.]
+<!-- [Some summary about which clades were predicted and which teams submitted.] -->
 
 
 ## Plots of data and nowcasts
@@ -65,7 +70,7 @@ The interactive plots below summarize recent data and predictions of SARS-CoV-2 
 target_data_filename <- paste0("https://covid-clade-counts.s3.amazonaws.com/", this_ref_date-2, "_covid_clade_counts.parquet")
 target_data <- arrow::read_parquet(target_data_filename) |> 
   dplyr::mutate(clade = ifelse(clade %in% clades_predicted, clade, "other")) |> 
-  dplyr::filter(date >= this_ref_date - 75, ## fixing min date for plotting
+  dplyr::filter(date >= this_ref_date - 96, ## fixing min date for plotting
                 date <= this_ref_date ## fixing max date to remove under-reported recent data
                 ) |> 
   dplyr::group_by(date) |> 
@@ -98,7 +103,7 @@ saturdays <- seq.Date(from = this_ref_date -25, ## 4 Saturdays ago
                       by = "7 days")
 
 ## gather hub data
-hub_con <- connect_hub(hub_path = "../variant-nowcast-hub/")
+hub_con <- connect_hub(hub_path = arrow::s3_bucket("covid-variant-nowcast-hub"))
 dat <- hub_con |> 
   dplyr::filter(nowcast_date == this_ref_date,
                 target_date %in% saturdays) |> 

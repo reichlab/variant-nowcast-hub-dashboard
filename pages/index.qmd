@@ -3,21 +3,23 @@ title: "Introduction"
 ---
 
 
-::: {style='display:flex; align-items: center; justify-content: center'}
 
-[View The Latest Forecasts](forecast.html){.btn .btn-primary role="button"}
+The United States SARS-CoV-2 Variant Nowcast Hub has been designed by researchers from the [US CDC Center of Forecasting and Outbreak Analytics (CFA)](https://www.cdc.gov/forecast-outbreak-analytics/index.html) and [the Reich Lab at UMass Amherst](https://reichlab.io/), in consultation with folks from [the NextStrain project](https://nextstrain.org/).
 
-:::
+Teams may submit predictions of the prevalence of the predominant SARS-CoV-2 clades in the US, at a daily timescale and the geographic resolution of all 50 United States plus Washington, DC and Puerto Rico.
 
+### Predicted clades
 
-This Dashboard is build with Quarto. 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+Each week the hub designates up to nine NextStrain clades with the highest reported prevalence of at least 1% across the US in any of the three complete [USA/CDC epidemiological weeks](https://ndc.services.cdc.gov/wp-content/uploads/MMWR_Week_overview.pdf) (a.k.a. MMWR weeks) preceding the Wednesday submission date. Any clades with prevalence of less than 1% are grouped into an “other” category for which predictions of combined prevalence are also collected. No more than 10 clades (including “other”) are selected in a given week. 
 
-Authors can use $\LaTeX$ to write equations and even put in callouts:
+### Prediction horizon
+
+Genomic sequences tend to be reported weeks after being collected. Therefore, recent data is subject to quite a lot of backfill. For this reason, the hub collects "nowcasts" (predictions for data relevant to times prior to the current time, but not yet observed) and some "forecasts" (predictions for future observations). Counting the Wednesday submission date as a prediction horizon of zero, we collect daily-level predictions for 10 days into the future (the Saturday that ends the epidemic week after the Wednesday submission) and -31 days into the past (the Sunday that starts the epidemic week four weeks prior to the Wednesday submission date). Overall, six weeks (42 days) of predicted values are solicited each week.
+
 
 :::{.callout-note}
 
-Look at this note!
+Check out [the variant nowcasting hub repo](https://github.com/reichlab/variant-nowcast-hub/blob/main/README.md) for information about how to contribute predictions to the hub!
 
 :::
 

@@ -1,6 +1,6 @@
 ---
-hub: "cdcepi/FluSight-forecast-hub/"
-title: "Example Hub Dashboard Website"
+hub: "reichlab/variant-nowcast-hub"
+title: "SARS-CoV-2 Variant Nowcast Hub"
 pages:
-  - "about.md"
+  - "weekly-report-template.md"
 

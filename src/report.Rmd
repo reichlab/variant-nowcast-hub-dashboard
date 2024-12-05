@@ -3,11 +3,6 @@ title: "Weekly report"
 date: "`r format(Sys.Date(), format = '%B %d, %Y')`"
 output: 
   html_fragment:
-  html_document:
-    keep_md: yes
-    self_contained: false
-include-in-header:
-    file: includes/in-header.html
 ---
 
 

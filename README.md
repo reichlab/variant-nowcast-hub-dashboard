@@ -29,7 +29,7 @@ docker pull ghcr.io/hubverse-org/hub-dash-site-builder:main
 ```
 docker run --platform=linux/amd64 --rm -ti -v "$(pwd)":"/site" ghcr.io/hubverse-org/hub-dash-site-builder:main bash render.sh
 ```
-4. Open the file `variant-nowcast-hub-dashboard/pages/_site/index.html` in a web browser.
+4. Open the file `pages/_site/index.html` in a web browser.
 
 ## How to trigger a rebuild of the site on GitHub pages
 

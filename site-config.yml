@@ -2,5 +2,9 @@
 hub: "reichlab/variant-nowcast-hub"
 title: "SARS-CoV-2 Variant Nowcast Hub"
 pages:
-  - "report.md"
-
+  - text: "Reports"
+    menu:
+    - text: "2024-12-04"
+      href: "2024-12-04-report.md"
+    - text: "2024-11-27"
+      href: "2024-11-27-report.md"

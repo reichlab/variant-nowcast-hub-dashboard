@@ -1,6 +1,4 @@
 ---
-title: "Weekly report"
-date: "`r format(Sys.Date(), format = '%B %d, %Y')`"
 output: 
   html_fragment:
 ---
@@ -18,11 +16,11 @@ library(plotly)
 library(crosstalk)
 theme_set(theme_bw())
 
-this_ref_date <- as.Date("2024-12-04")
+this_ref_date <- as.Date("2024-11-27")
 quantiles <- c(0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95)
 ```
 
-**This report was generated on `r format(Sys.time(), tz = "UTC", format = '%B %d, %Y %H:%M:%S')`.**
+**This report summarizes predictions submitted on `r format(this_ref_date, format = '%B %d, %Y')` and was generated on `r format(Sys.time(), tz = "UTC", format = '%B %d, %Y %H:%M:%S')`.**
 
 ```{r get-predicted-clades}
 ## download the metadata about the prediction tasks for the variant nowcast hub

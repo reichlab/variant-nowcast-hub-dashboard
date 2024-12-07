@@ -2,15 +2,16 @@
 
 ## How to generate and add a new report
 
-Each report will need a page as in `pages/report.md` that will serve as the shell
+Each report will need a markdown page as in `pages/2024-12-04-report.md` that will serve as the shell
 page for the report with an include that points to a file in `pages/includes`, 
-such as `pages/includes/report.html`. To make a new report that is its own page,
+such as `pages/includes/2024-12-04-report.html`. To make a new report that is its own page,
 you need to follow these (currently manual) steps:
 
 1. Update the reference date in the `src/report.Rmd` file and render the file as an html fragment.
-2. Copy the rendered html fragment in `src/report.html` to `pages/includes/YYYY-MM-DD-report.html`. 
-[Note: we need to establish a standard date naming scheme.]
-3. Copy the `pages/report.md` to `pages/YYYY-MM-DD-report.md` and point the included
+2. Copy the rendered html fragment in `src/report.html` to `pages/includes/YYYY-MM-DD-report.html`, 
+where `YYYY-MM-DD` is the reference date.
+3. Copy an existing markdown page such as `pages/2024-12-04-report.md` to 
+`pages/YYYY-MM-DD-report.md` and point the included
 file in that document to the html fragment from step 2.
 4. Test out the build locally. 
 5. If the site looks good, submit a PR to the repo and this should trigger a rebuild of the site. 

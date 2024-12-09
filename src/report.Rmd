@@ -175,7 +175,7 @@ bscols(
       geom_point(data = shared_target,
                  aes(x=date, y=value, size=total),
                  alpha = 0.5) +
-      geom_vline(data = shared_vline, aes(xintercept=as.numeric(ref_date)), alpha = .5) +
+      geom_vline(data = shared_vline, aes(xintercept=as.numeric(ref_date)), alpha = .5, linetype=2) +
       facet_wrap(.~clade_label) +
       xlab(NULL) +
       scale_y_continuous(name = "clade proportion", limits = c(0,1)) +

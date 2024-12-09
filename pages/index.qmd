@@ -1,5 +1,7 @@
 ---
 title: "Introduction"
+include-after-body:
+    file: includes/after-body.html
 ---
 
 
@@ -8,7 +10,7 @@ The United States SARS-CoV-2 Variant Nowcast Hub has been designed by researcher
 
 Teams may submit predictions of the prevalence of the predominant SARS-CoV-2 clades in the US, at a daily timescale and the geographic resolution of all 50 United States plus Washington, DC and Puerto Rico.
 
-### Nextstrain clades and pango lineages
+## Nextstrain clades and pango lineages
 
 [Nextstrain clade names](https://docs.nextstrain.org/projects/ncov/en/latest/reference/naming_clades.html), such as "19A" or "24H", "label genetically well defined clades that have reached significant frequency and geographic spread". The Variant Nowcast Hub use Nextstrain clades, although model outputs, as shown in the model reports, are translated so that clades are matched with pango lineages. One reason the hub chose to use the Nextstrain clades as the grouping for the modeling is that the broader "clade" grouping allows for a smaller number of categories to be modeled in any given week compared with pango lineages, which do not have a similar high-level grouping.
 
@@ -19,11 +21,11 @@ The following list provides a partial history of Nextstrain clade announcements,
 - [24H (LF.7) and 24I (MV.1)](https://github.com/nextstrain/ncov/pull/1158) (18 Oct 2024)
 - [24F (XEC) and 24G (KP.2.3)](https://github.com/nextstrain/ncov/pull/1152) (25 Sep 2024)
 
-### How does the hub determine which clades to predict?
+## How does the hub determine which clades to predict?
 
 Each week the hub designates up to nine NextStrain clades with the highest reported prevalence of at least 1% across the US in any of the three complete [USA/CDC epidemiological weeks](https://ndc.services.cdc.gov/wp-content/uploads/MMWR_Week_overview.pdf) (a.k.a. MMWR weeks) preceding the Wednesday submission date. Any clades with prevalence of less than 1% are grouped into an “other” category for which predictions of combined prevalence are also collected. No more than 10 clades (including “other”) are selected in a given week. 
 
-### What dates are predictions available for?
+## What dates are predictions available for?
 
 Genomic sequences tend to be reported weeks after being collected. Therefore, recent data is subject to quite a lot of backfill. For this reason, the hub collects "nowcasts" (predictions for data relevant to times prior to the current time, but not yet observed) and some "forecasts" (predictions for future observations). Counting the Wednesday submission date as a prediction horizon of zero, we collect daily-level predictions for 10 days into the future (the Saturday that ends the epidemic week after the Wednesday submission) and -31 days into the past (the Sunday that starts the epidemic week four weeks prior to the Wednesday submission date). Overall, six weeks (42 days) of predicted values are solicited each week.
 

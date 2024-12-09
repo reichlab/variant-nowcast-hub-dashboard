@@ -58,7 +58,8 @@ clade_labels <- readr::read_delim("https://raw.githubusercontent.com/nextstrain/
 
 ## Plots of data and nowcasts
 
-The interactive plots below summarize recent data and predictions of SARS-CoV-2 clades. Variants are labeled using both the correspnding Nextstrain clade and the associated pango lineage (e.g., "24A (JN.1)"). Recent observations are summaries of genomic sequence metadata from GenBank, made available as [the "full open" datasets from Nextstrain](https://docs.nextstrain.org/projects/ncov/en/latest/reference/remote_inputs.html#remote-inputs-open-files). The points representing observed clade frequencies in a given week are transparent black dots. The size of the point corresponds to the total number of sequences (of all clades) in that state for that week (the specific number is visible when you hover on a specific point). Note that proportions from the most recently observed week are likely to change as new data arrives in future weeks. Points representing the clade proportion from each prediction model are shown as open circles of different colors. For simplicity, we show just the prediction from the Saturday from each week.
+The interactive plots below summarize recent data and predictions of SARS-CoV-2 clades. Variants are labeled using both the correspnding Nextstrain clade and the associated pango lineage (e.g., "24A (JN.1)"). Recent observations are summaries of genomic sequence metadata from GenBank, made available as [the "full open" datasets from Nextstrain](https://docs.nextstrain.org/projects/ncov/en/latest/reference/remote_inputs.html#remote-inputs-open-files). The points representing observed clade frequencies in a given week are transparent black dots. The size of the point corresponds to the total number of sequences (of all clades) in that state for that week (the specific number is visible when you hover on a specific point). Note that proportions from the most recently observed week are likely to change as new data arrives in future weeks. Points representing the clade proportion from each prediction model are shown as open circles of different colors.
+For simplicity, we show just the prediction from the Saturday from each week. The vertical gray line indicates the date on which submissions for this round were due.
 
 ```{r get-target-data}
 ## gather target data
@@ -154,9 +155,13 @@ shared_means <- mean_dat_all |>
 shared_target <- target_data_wk |> 
   SharedData$new(~location, group = "Choose state")
 
+shared_vline <- data.frame(location = unique(target_data_wk$location), ref_date = this_ref_date) |> 
+  SharedData$new(~location, group = "Choose state")
+
+
 bscols(
   filter_select(id = "state", 
-                label = "State", 
+                label = "Choose a state", 
                 sharedData = shared_means, 
                 group = ~location,
                 multiple = FALSE,
@@ -170,13 +175,13 @@ bscols(
       geom_point(data = shared_target,
                  aes(x=date, y=value, size=total),
                  alpha = 0.5) +
-      # geom_vline(xintercept=as.numeric(this_ref_date), alpha = .5) +
+      geom_vline(data = shared_vline, aes(xintercept=as.numeric(ref_date)), alpha = .5) +
       facet_wrap(.~clade_label) +
       xlab(NULL) +
       scale_y_continuous(name = "clade proportion", limits = c(0,1)) +
       scale_color_brewer(palette = "Dark2", name = "model") +
       scale_size_continuous(guide = "none"),
-    height = 500
+    height = 600
   ) |> 
     plotly::layout(legend=list(x=0, 
                                xanchor='left',

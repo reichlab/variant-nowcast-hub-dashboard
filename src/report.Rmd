@@ -16,7 +16,7 @@ library(plotly)
 library(crosstalk)
 theme_set(theme_bw())
 
-this_ref_date <- as.Date("2024-11-27")
+this_ref_date <- as.Date("2024-12-04")
 quantiles <- c(0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95)
 ```
 
@@ -137,44 +137,15 @@ quantile_data <- sample_dat |>
   dplyr::left_join(clade_labels)
 ```
 
-```{r forecast-function, eval=FALSE}
-# forecast_plot <- function(quantile_data, target_data, this_location = "MA") {
-#   require(ggplot2)
-#   require(plotly)
-#   p <- ggplot() +
-#     geom_line(data = dplyr::filter(quantile_data, output_type_id == 0.5, location == this_location),
-#               aes(x=target_date, y=value, color=clade), linetype = 2) +
-#     geom_point(data = dplyr::filter(target_data, location == this_location), 
-#                aes(x=date, y=value, color=clade), alpha = 0.2) +
-#     geom_smooth(data = dplyr::filter(target_data, location == this_location), 
-#                 aes(x=date, y=value, color=clade, weight = total), se=FALSE) +
-#     facet_wrap(.~model_id)
-#   ggplotly(p)
-# }
-
-
-forecast_plot <- function(quantile_data, target_data) {
-  require(ggplot2)
-  require(plotly)
-  p <- ggplot() +
-    geom_line(data = dplyr::filter(quantile_data, output_type_id == 0.5),
-              aes(x=target_date, y=value, color=clade), linetype = 2) +
-    geom_point(data = dplyr::filter(target_data, location == "MA"), 
-               aes(x=date, y=value, color=clade), alpha = 0.2) +
-    geom_smooth(data = dplyr::filter(target_data, location == "MA"), 
-                aes(x=date, y=value, color=clade, weight = total), se=FALSE) +
-    facet_wrap(.~model_id)
-  ggplotly(p)
-}
-
-```
-
 
 ```{r make-plot}
 ## adapted from https://stackoverflow.com/questions/72747650/r-make-boxplot-using-crosstalk-and-ggplot2-box-plot-color-is-lost
 
 shared_quantile <- quantile_data |> 
-  dplyr::filter(output_type_id == 0.5) |> 
+  dplyr::filter(output_type_id %in% c(0.1, 0.5, 0.9)) |>
+  tidyr::pivot_wider(names_from = output_type_id, 
+                     values_from = value,
+                     names_prefix = "q") |> 
   SharedData$new(~location, group = "Choose state")
 
 shared_means <- mean_dat_all |> 
@@ -192,23 +163,25 @@ bscols(
                 allLevels = TRUE),
   ggplotly(
     ggplot() +
-      geom_point(data = shared_means, 
-                 aes(x=target_date, y=value, color=model_id), 
-                 shape = 1) + 
+      geom_line(data = shared_means, 
+                 aes(x=target_date, y=value, color=model_id)) + 
+      # geom_ribbon(data = shared_quantile,
+      #             aes(x=target_date, ymin = q0.1, ymax = q0.9, fill = model_id, color = model_id, fill = model_id), alpha = .2) +
       geom_point(data = shared_target,
                  aes(x=date, y=value, size=total),
                  alpha = 0.5) +
-      ## code below is not working
-      # geom_smooth(data = shared_target, 
-      #             aes(x=date, y=value, color=clade, weight = total),
-      #             se=FALSE, method="gam") +
-      # geom_vline(xintercept=this_ref_date, linetype = 2) +
+      # geom_vline(xintercept=as.numeric(this_ref_date), alpha = .5) +
       facet_wrap(.~clade_label) +
       xlab(NULL) +
       scale_y_continuous(name = "clade proportion", limits = c(0,1)) +
       scale_color_brewer(palette = "Dark2", name = "model") +
-      scale_size_continuous(guide = "none")
-  ),
+      scale_size_continuous(guide = "none"),
+    height = 500
+  ) |> 
+    plotly::layout(legend=list(x=0, 
+                               xanchor='left',
+                               yanchor='top',
+                               orientation='h'))  ,
   widths = 12
 )
 ```

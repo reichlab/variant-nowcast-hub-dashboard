@@ -13,8 +13,10 @@ where `YYYY-MM-DD` is the reference date.
 3. Copy an existing markdown page such as `pages/2024-12-04-report.md` to 
 `pages/YYYY-MM-DD-report.md` and point the included
 file in that document to the html fragment from step 2.
-4. Test out the build locally. 
-5. If the site looks good, submit a PR to the repo and this should trigger a rebuild of the site. 
+4. Edit the `site-config.yml` to add a new `text` and `href` field at the top of the `menu:` header,
+following the format of the other entries that are there, for the `YYYY-MM-DD` that you have built.
+5. Test out the build locally. (See instructions below)
+6. If the site looks good, submit a PR to the repo and this should trigger a rebuild of the site. 
 
 ## Building the site locally
 

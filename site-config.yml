@@ -4,6 +4,8 @@ title: "SARS-CoV-2 Variant Nowcast Hub"
 pages:
   - text: "Reports"
     menu:
+    - text: "2025-08-27"
+      href: "2025-08-27-report.md"
     - text: "2025-08-20"
       href: "2025-08-20-report.md"
     - text: "2025-08-13"

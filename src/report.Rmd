@@ -6,7 +6,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
-this_ref_date <- as.Date("2024-12-11")
+this_ref_date <- as.Date("2025-12-03")
 quantiles <- c(0.1, 0.5, 0.9)
 ```
 
@@ -156,7 +156,23 @@ shared_target <- target_data_wk |>
 shared_vline <- data.frame(location = unique(target_data_wk$location), ref_date = this_ref_date) |> 
   SharedData$new(~location, group = "Choose state")
 
-
+distinct_colors <- c(
+  "#E69F00",  # orange
+  "#56B4E9",  # sky blue
+  "#009E73",  # bluish green
+  "#F0E442",  # yellow
+  "#0072B2",  # blue
+  "#D55E00",  # vermillion
+  "#CC79A7",  # reddish purple
+  "#999999",  # grey
+  "#000000",  # black
+  "#B2DF8A",  # light green
+  "#FB9A99",  # light pink
+  "#CAB2D6",  # lilac
+  "#FDBF6F",  # light orange
+  "#1F78B4",  # strong blue
+  "#33A02C"   # strong green
+)
 bscols(
   filter_select(id = "state", 
                 label = "Choose a state", 
@@ -177,7 +193,7 @@ bscols(
       facet_wrap(.~clade_label) +
       xlab(NULL) +
       scale_y_continuous(name = "clade proportion", limits = c(0,1)) +
-      scale_color_brewer(palette = "Dark2", name = "model") +
+      scale_color_manual(values = distinct_colors, name = "model") +
       scale_size_continuous(guide = "none"),
     height = 600
   ) |> 

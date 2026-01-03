@@ -193,9 +193,12 @@ viewof selectedNowcastDate = {
 
 ```{ojs}
 //| echo: false
-viewof dataVersion = {
+viewof selectedDataVersions = {
+  const container = html`<div class="checkbox-group" style="padding: 0.3rem;"></div>`;
+
   if (!config || !selectedNowcastDate || !config.as_of_dates) {
-    return Inputs.radio(["round-open", "latest"], { value: "round-open" });
+    container.value = ["round-open"];
+    return container;
   }
 
   const asOfDates = config.as_of_dates[selectedNowcastDate] || {};
@@ -207,12 +210,60 @@ viewof dataVersion = {
   const roundOpenLabel = `Round open (${roundOpenDate})`;
   const latestLabel = roundClosed
     ? `Round close (${latestDate})`
-    : `Latest data (${latestDate})`;
+    : `Last update (${latestDate})`;
 
-  return Inputs.radio(["round-open", "latest"], {
-    value: "round-open",
-    format: d => d === "round-open" ? roundOpenLabel : latestLabel
+  const options = [
+    { value: "round-open", label: roundOpenLabel },
+    { value: "latest", label: latestLabel }
+  ];
+
+  // Get saved selections or default to round-open
+  const savedSelections = window._dashboardState?.dataVersionSelections;
+  const getInitialChecked = (value) => {
+    if (savedSelections === null || savedSelections === undefined) {
+      return value === "round-open"; // Default: only round-open selected
+    }
+    return savedSelections.includes(value);
+  };
+
+  options.forEach((opt, i) => {
+    const id = `data-version-${opt.value}`;
+    const checked = getInitialChecked(opt.value);
+    const label = html`<label style="display: block; margin-bottom: 0.1rem; cursor: pointer;">
+      <input type="checkbox" id="${id}" value="${opt.value}" ${checked ? 'checked' : ''}>
+      ${opt.label}
+    </label>`;
+    container.appendChild(label);
   });
+
+  const updateValue = () => {
+    container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    // Ensure at least one is selected
+    if (container.value.length === 0) {
+      container.value = ["round-open"];
+      container.querySelector('input[value="round-open"]').checked = true;
+    }
+    if (window._dashboardState) {
+      window._dashboardState.dataVersionSelections = container.value;
+    }
+    container.dispatchEvent(new Event('input'));
+  };
+
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', updateValue);
+  });
+
+  // Set initial value
+  container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+  if (container.value.length === 0) {
+    container.value = ["round-open"];
+    container.querySelector('input[value="round-open"]').checked = true;
+  }
+  if (window._dashboardState) {
+    window._dashboardState.dataVersionSelections = container.value;
+  }
+
+  return container;
 }
 ```
 
@@ -224,25 +275,57 @@ viewof dataVersion = {
 
 ```{ojs}
 //| echo: false
-viewof showIntervals = Inputs.toggle({
-  label: "Show intervals",
-  value: true
-})
+viewof showIntervals = {
+  const savedValue = window._dashboardState?.intervalSettings?.showIntervals;
+  const initialValue = savedValue !== undefined ? savedValue : true;
+
+  const toggle = Inputs.toggle({
+    label: "Show intervals",
+    value: initialValue
+  });
+
+  toggle.addEventListener('input', () => {
+    if (window._dashboardState) {
+      if (!window._dashboardState.intervalSettings) {
+        window._dashboardState.intervalSettings = {};
+      }
+      window._dashboardState.intervalSettings.showIntervals = toggle.value;
+    }
+  });
+
+  return toggle;
+}
 ```
 
 ```{ojs}
 //| echo: false
-viewof intervalLevel = Inputs.select([50, 80, 95], {
-  value: 80,
-  format: d => `${d}%`,
-  disabled: !showIntervals
-})
+viewof intervalLevel = {
+  const savedValue = window._dashboardState?.intervalSettings?.intervalLevel;
+  const initialValue = savedValue !== undefined ? savedValue : 80;
+
+  const select = Inputs.select([50, 80, 95], {
+    value: initialValue,
+    format: d => `${d}%`,
+    disabled: !showIntervals
+  });
+
+  select.addEventListener('input', () => {
+    if (window._dashboardState) {
+      if (!window._dashboardState.intervalSettings) {
+        window._dashboardState.intervalSettings = {};
+      }
+      window._dashboardState.intervalSettings.intervalLevel = select.value;
+    }
+  });
+
+  return select;
+}
 ```
 
 ```{ojs}
 //| echo: false
 // Prediction intervals require latest data (observations after nowcast date)
-predictionIntervalsAvailable = dataVersion === "latest"
+predictionIntervalsAvailable = selectedDataVersions && selectedDataVersions.includes("latest")
 
 viewof intervalType = {
   const container = html`<div style="line-height: 1.4;"></div>`;
@@ -252,22 +335,42 @@ viewof intervalType = {
     { value: "prediction", label: "Prediction intervals", enabled: predictionIntervalsAvailable }
   ];
 
+  // Get saved value or default to confidence
+  const savedValue = window._dashboardState?.intervalSettings?.intervalType;
+  const initialValue = savedValue || "confidence";
+
   options.forEach((opt, i) => {
     const id = `interval-type-${opt.value}`;
     const disabled = !opt.enabled || !showIntervals;
+    // Use saved value if available and option is enabled, otherwise use first enabled
+    const isChecked = !disabled && opt.value === initialValue;
     const label = html`<label style="display: block; margin-bottom: 0.1rem; ${disabled ? 'opacity: 0.4; cursor: not-allowed;' : ''}">
       <input type="radio" name="intervalType" value="${opt.value}"
-             ${i === 0 ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+             ${isChecked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
       ${opt.label}
     </label>`;
     container.appendChild(label);
   });
 
-  container.value = "confidence";
-  container.oninput = () => {
+  // If no radio is checked, check the first enabled one
+  if (!container.querySelector('input:checked')) {
+    const firstEnabled = container.querySelector('input:not(:disabled)');
+    if (firstEnabled) firstEnabled.checked = true;
+  }
+
+  const updateValue = () => {
     const checked = container.querySelector('input:checked');
     container.value = checked ? checked.value : "confidence";
+    if (window._dashboardState) {
+      if (!window._dashboardState.intervalSettings) {
+        window._dashboardState.intervalSettings = {};
+      }
+      window._dashboardState.intervalSettings.intervalType = container.value;
+    }
   };
+
+  container.value = container.querySelector('input:checked')?.value || "confidence";
+  container.oninput = updateValue;
 
   return container;
 }
@@ -475,7 +578,7 @@ viewof selectedClades = {
 
 // Configuration and data loading
 // Use relative URLs for local development, GitHub raw URLs for production
-baseUrl = window.location.hostname === "localhost" ? "" : "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub-dashboard/dashboard-data"
+baseUrl = window.location.hostname === "localhost" ? "/output" : "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub-dashboard/dashboard-data"
 
 // Cache buster for development - change this to force reload
 cacheBuster = `?v=${Date.now()}`
@@ -514,7 +617,9 @@ config = {
   if (!window._dashboardState) {
     window._dashboardState = {
       modelSelections: null,
-      cladeSelections: null
+      cladeSelections: null,
+      dataVersionSelections: null,
+      intervalSettings: null
     };
   }
 }
@@ -538,22 +643,27 @@ forecastData = {
   }
 }
 
-targetData = {
-  if (!selectedLocation || !selectedNowcastDate || !dataVersion) return null;
-  if (typeof selectedLocation !== 'string' || typeof selectedNowcastDate !== 'string') return null;
-  try {
-    const url = `${baseUrl}/targets/${dataVersion}/${selectedLocation}_${selectedNowcastDate}.json`;
-    console.log("Fetching target:", url);
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.log("Target fetch failed:", response.status);
-      return null;
+// Fetch target data for all selected versions
+targetDataByVersion = {
+  if (!selectedLocation || !selectedNowcastDate || !selectedDataVersions || selectedDataVersions.length === 0) return {};
+  if (typeof selectedLocation !== 'string' || typeof selectedNowcastDate !== 'string') return {};
+
+  const results = {};
+  for (const version of selectedDataVersions) {
+    try {
+      const url = `${baseUrl}/targets/${version}/${selectedLocation}_${selectedNowcastDate}.json`;
+      console.log("Fetching target:", url);
+      const response = await fetch(url);
+      if (response.ok) {
+        results[version] = await response.json();
+      } else {
+        console.log(`Target fetch failed for ${version}:`, response.status);
+      }
+    } catch (e) {
+      console.log(`Target fetch error for ${version}:`, e);
     }
-    return await response.json();
-  } catch (e) {
-    console.log("Target fetch error:", e);
-    return null;
   }
+  return results;
 }
 ```
 
@@ -717,40 +827,66 @@ buildTraces = () => {
     });
   });
 
-  // Add target data points
-  if (targetData && targetData.data) {
-    selectedClades.forEach((clade, cladeIdx) => {
-      if (!targetData.data[clade]) return;
+  // Add target data points for each selected version
+  // Style: round-open = open circles (black border, white fill), latest = filled black circles
+  const versionStyles = {
+    "round-open": {
+      color: "white",
+      line: { color: "black", width: 1.5 },
+      symbol: "circle-open",
+      name: "Round open"
+    },
+    "latest": {
+      color: "black",
+      line: { width: 0 },
+      symbol: "circle",
+      name: "Last update"
+    }
+  };
 
-      const cladeTargetData = targetData.data[clade];
-      const xaxis = cladeIdx === 0 ? "x" : `x${cladeIdx + 1}`;
-      const yaxis = cladeIdx === 0 ? "y" : `y${cladeIdx + 1}`;
+  if (targetDataByVersion && Object.keys(targetDataByVersion).length > 0) {
+    let isFirstVersion = true;
+    for (const [version, targetData] of Object.entries(targetDataByVersion)) {
+      if (!targetData || !targetData.data) continue;
 
-      // Scale marker size by total count
-      const sizes = cladeTargetData.total.map(t => Math.min(Math.max(Math.sqrt(t) * 1.5, 4), 20));
+      const style = versionStyles[version] || versionStyles["latest"];
+      const legendGroup = `observed-${version}`;
 
-      // Build customdata array with count and total for each point
-      const customData = cladeTargetData.count.map((c, i) => [c, cladeTargetData.total[i]]);
+      selectedClades.forEach((clade, cladeIdx) => {
+        if (!targetData.data[clade]) return;
 
-      traces.push({
-        x: targetData.data.target_date,
-        y: cladeTargetData.proportion,
-        type: "scatter",
-        mode: "markers",
-        name: "Observed",
-        legendgroup: "observed",
-        showlegend: cladeIdx === 0,
-        marker: {
-          color: "black",
-          opacity: 0.5,
-          size: sizes
-        },
-        customdata: customData,
-        xaxis: xaxis,
-        yaxis: yaxis,
-        hovertemplate: `Observed<br>Date: %{x}<br>Proportion: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
+        const cladeTargetData = targetData.data[clade];
+        const xaxis = cladeIdx === 0 ? "x" : `x${cladeIdx + 1}`;
+        const yaxis = cladeIdx === 0 ? "y" : `y${cladeIdx + 1}`;
+
+        // Scale marker size by total count
+        const sizes = cladeTargetData.total.map(t => Math.min(Math.max(Math.sqrt(t) * 1.5, 4), 20));
+
+        // Build customdata array with count and total for each point
+        const customData = cladeTargetData.count.map((c, i) => [c, cladeTargetData.total[i]]);
+
+        traces.push({
+          x: targetData.data.target_date,
+          y: cladeTargetData.proportion,
+          type: "scatter",
+          mode: "markers",
+          name: style.name,
+          legendgroup: legendGroup,
+          showlegend: cladeIdx === 0 && isFirstVersion,
+          marker: {
+            color: style.color,
+            line: style.line,
+            opacity: version === "round-open" ? 0.7 : 0.5,
+            size: sizes
+          },
+          customdata: customData,
+          xaxis: xaxis,
+          yaxis: yaxis,
+          hovertemplate: `${style.name}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
+        });
       });
-    });
+      isFirstVersion = false;
+    }
   }
 
   return traces;
@@ -846,12 +982,15 @@ buildLayout = () => {
 
 // Check if target data has any counts
 hasTargetData = {
-  if (!targetData || !targetData.data) return false;
-  // Check if any clade has non-zero total counts
-  const clades = Object.keys(targetData.data).filter(k => k !== "target_date");
-  return clades.some(clade => {
-    const totals = targetData.data[clade]?.total;
-    return totals && totals.some(t => t > 0);
+  if (!targetDataByVersion || Object.keys(targetDataByVersion).length === 0) return false;
+  // Check if any version has any clade with non-zero total counts
+  return Object.values(targetDataByVersion).some(targetData => {
+    if (!targetData || !targetData.data) return false;
+    const clades = Object.keys(targetData.data).filter(k => k !== "target_date");
+    return clades.some(clade => {
+      const totals = targetData.data[clade]?.total;
+      return totals && totals.some(t => t > 0);
+    });
   });
 }
 
@@ -923,6 +1062,5 @@ Plotly = require("https://cdn.plot.ly/plotly-2.27.0.min.js")
 
 - **Lines** show model predictions (mean values) for each clade
 - **Shaded ribbons** show prediction intervals at the selected confidence level
-- **Black dots** show observed data; dot size reflects the total number of sequences for that week
+- **Open circles** show observed data available when the round opened; **filled circles** show the latest data update; dot size reflects the total number of sequences for that week
 - **Vertical dashed line** indicates the nowcast/submission date
-- **Latest data** shows the most recent observations; **Round-open data** shows what was available when the nowcast was made

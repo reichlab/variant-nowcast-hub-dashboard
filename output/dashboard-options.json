@@ -1,0 +1,480 @@
+{
+  "locations": ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"],
+  "location_names": {
+    "AL": "Alabama",
+    "AK": "Alaska",
+    "AZ": "Arizona",
+    "AR": "Arkansas",
+    "CA": "California",
+    "CO": "Colorado",
+    "CT": "Connecticut",
+    "DE": "Delaware",
+    "DC": "District of Columbia",
+    "FL": "Florida",
+    "GA": "Georgia",
+    "HI": "Hawaii",
+    "ID": "Idaho",
+    "IL": "Illinois",
+    "IN": "Indiana",
+    "IA": "Iowa",
+    "KS": "Kansas",
+    "KY": "Kentucky",
+    "LA": "Louisiana",
+    "ME": "Maine",
+    "MD": "Maryland",
+    "MA": "Massachusetts",
+    "MI": "Michigan",
+    "MN": "Minnesota",
+    "MS": "Mississippi",
+    "MO": "Missouri",
+    "MT": "Montana",
+    "NE": "Nebraska",
+    "NV": "Nevada",
+    "NH": "New Hampshire",
+    "NJ": "New Jersey",
+    "NM": "New Mexico",
+    "NY": "New York",
+    "NC": "North Carolina",
+    "ND": "North Dakota",
+    "OH": "Ohio",
+    "OK": "Oklahoma",
+    "OR": "Oregon",
+    "PA": "Pennsylvania",
+    "PR": "Puerto Rico",
+    "RI": "Rhode Island",
+    "SC": "South Carolina",
+    "SD": "South Dakota",
+    "TN": "Tennessee",
+    "TX": "Texas",
+    "UT": "Utah",
+    "VT": "Vermont",
+    "VA": "Virginia",
+    "WA": "Washington",
+    "WV": "West Virginia",
+    "WI": "Wisconsin",
+    "WY": "Wyoming"
+  },
+  "nowcast_dates": ["2024-09-11", "2024-09-18", "2024-09-25", "2024-10-02", "2024-10-09", "2024-10-16", "2024-10-23", "2024-10-30", "2024-11-06", "2024-11-13", "2024-11-20", "2024-11-27", "2024-12-04", "2024-12-11", "2024-12-18", "2024-12-25", "2025-01-01", "2025-01-08", "2025-01-15", "2025-01-22", "2025-01-29", "2025-02-05", "2025-02-12", "2025-02-19", "2025-02-26", "2025-03-05", "2025-03-12", "2025-03-19", "2025-03-26", "2025-04-02", "2025-04-09", "2025-04-16", "2025-04-23", "2025-04-30", "2025-05-07", "2025-05-14", "2025-05-21", "2025-05-28", "2025-06-04", "2025-06-11", "2025-06-18", "2025-06-25", "2025-07-02", "2025-07-09", "2025-07-16", "2025-07-23", "2025-07-30", "2025-08-06", "2025-08-13", "2025-08-20", "2025-08-27", "2025-09-03", "2025-09-10", "2025-09-17", "2025-09-24", "2025-10-01", "2025-10-08", "2025-10-15", "2025-10-22", "2025-10-29", "2025-11-05", "2025-11-12", "2025-11-19", "2025-11-26", "2025-12-03", "2025-12-10", "2025-12-17", "2025-12-24", "2025-12-31"],
+  "models": ["Hub-baseline", "UMass-HMLR", "LANL-CovTransformer", "CADPH-CATaLog", "UGA-multicast", "CADPH-CATaMaran", "blab-gisaid_hier_mlr", "Hub-ensemble", "blab-open_hier_mlr", "UMass-PyHMLR"],
+  "initial_selected_models": ["Hub-ensemble"],
+  "clades_by_date": {
+    "2024-09-11": ["24A", "24B", "24C", "recombinant", "other"],
+    "2024-09-18": ["24A", "24B", "24C", "recombinant", "other"],
+    "2024-09-25": ["24A", "24B", "24C", "recombinant", "other"],
+    "2024-10-02": ["24A", "24B", "24C", "24E", "recombinant", "other"],
+    "2024-10-09": ["24A", "24B", "24C", "24E", "recombinant", "other"],
+    "2024-10-16": ["24A", "24B", "24C", "24E", "recombinant", "other"],
+    "2024-10-23": ["24A", "24B", "24C", "24E", "24F", "24G", "recombinant", "other"],
+    "2024-10-30": ["24A", "24B", "24C", "24E", "24F", "24G", "recombinant", "other"],
+    "2024-11-06": ["24A", "24B", "24C", "24E", "24F", "24G", "recombinant", "other"],
+    "2024-11-13": ["24A", "24B", "24C", "24E", "24F", "24G", "recombinant", "other"],
+    "2024-11-20": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2024-11-27": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2024-12-04": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2024-12-11": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "recombinant", "other"],
+    "2024-12-18": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2024-12-25": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2025-01-01": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2025-01-08": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2025-01-15": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2025-01-22": ["24A", "24B", "24C", "24E", "24F", "24H", "24I", "recombinant", "other"],
+    "2025-01-29": ["24A", "24B", "24C", "24E", "24F", "24G", "24H", "24I", "recombinant", "other"],
+    "2025-02-05": ["24A", "24C", "24E", "24F", "24H", "24I", "25A", "recombinant", "other"],
+    "2025-02-12": ["24A", "24B", "24C", "24E", "24F", "24H", "24I", "25A", "recombinant", "other"],
+    "2025-02-19": ["24A", "24C", "24E", "24F", "24H", "24I", "25A", "recombinant", "other"],
+    "2025-02-26": ["24A", "24C", "24D", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-03-05": ["24A", "24C", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-03-12": ["24A", "24B", "24C", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-03-19": ["24A", "24C", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-03-26": ["24A", "24C", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-04-02": ["23A", "24A", "24B", "24C", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-04-09": ["23A", "24A", "24B", "24C", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-04-16": ["24A", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-04-23": ["24A", "24C", "24D", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-04-30": ["24A", "24C", "24D", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-05-07": ["24A", "24C", "24D", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-05-14": ["24A", "24C", "24D", "24E", "24F", "24H", "25A", "recombinant", "other"],
+    "2025-05-21": ["24A", "24C", "24E", "24F", "24H", "25A", "25B", "recombinant", "other"],
+    "2025-05-28": ["24A", "24C", "24E", "24F", "24H", "25A", "25B", "recombinant", "other"],
+    "2025-06-04": ["24A", "24D", "24E", "24F", "24H", "25A", "25B", "recombinant", "other"],
+    "2025-06-11": ["24A", "24D", "24E", "24F", "24H", "25A", "25B", "recombinant", "other"],
+    "2025-06-18": ["24D", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-06-25": ["24C", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-07-02": ["24A", "24C", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-07-09": ["21M", "24A", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-07-16": ["21M", "24A", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-07-23": ["24C", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-07-30": ["24C", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-08-06": ["24A", "24C", "24E", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-08-13": ["24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-08-20": ["24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-08-27": ["24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-09-03": ["24C", "24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-09-10": ["24A", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-09-17": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-09-24": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-10-01": ["24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-10-08": ["24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-10-15": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-10-22": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-10-29": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-11-05": ["24F", "24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-11-12": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-11-19": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-11-26": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-12-03": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-12-10": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-12-17": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-12-24": ["24H", "25A", "25B", "25C", "recombinant", "other"],
+    "2025-12-31": ["24H", "25B", "25C", "recombinant", "other"]
+  },
+  "clade_labels": {
+    "24A": "24A",
+    "24B": "24B",
+    "24C": "24C",
+    "recombinant": "recombinant",
+    "other": "other",
+    "24E": "24E",
+    "24F": "24F",
+    "24G": "24G",
+    "24H": "24H",
+    "24I": "24I",
+    "25A": "25A",
+    "24D": "24D",
+    "23A": "23A",
+    "25B": "25B",
+    "25C": "25C",
+    "21M": "21M"
+  },
+  "as_of_dates": {
+    "2024-10-09": {
+      "round_open": "2024-10-07",
+      "latest": "2025-01-07",
+      "round_closed": true
+    },
+    "2024-10-16": {
+      "round_open": "2024-10-14",
+      "latest": "2025-01-14",
+      "round_closed": true
+    },
+    "2024-10-23": {
+      "round_open": "2024-10-21",
+      "latest": "2025-01-21",
+      "round_closed": true
+    },
+    "2024-10-30": {
+      "round_open": "2024-10-28",
+      "latest": "2025-01-28",
+      "round_closed": true
+    },
+    "2024-11-06": {
+      "round_open": "2024-11-04",
+      "latest": "2025-02-04",
+      "round_closed": true
+    },
+    "2024-11-13": {
+      "round_open": "2024-11-11",
+      "latest": "2025-02-11",
+      "round_closed": true
+    },
+    "2024-11-20": {
+      "round_open": "2024-11-18",
+      "latest": "2025-02-18",
+      "round_closed": true
+    },
+    "2024-11-27": {
+      "round_open": "2024-11-25",
+      "latest": "2025-02-25",
+      "round_closed": true
+    },
+    "2024-12-04": {
+      "round_open": "2024-12-02",
+      "latest": "2025-03-04",
+      "round_closed": true
+    },
+    "2024-12-11": {
+      "round_open": "2024-12-09",
+      "latest": "2025-03-11",
+      "round_closed": true
+    },
+    "2024-12-18": {
+      "round_open": "2024-12-16",
+      "latest": "2025-03-18",
+      "round_closed": true
+    },
+    "2024-12-25": {
+      "round_open": "2024-12-23",
+      "latest": "2025-03-25",
+      "round_closed": true
+    },
+    "2025-01-01": {
+      "round_open": "2024-12-30",
+      "latest": "2025-04-01",
+      "round_closed": true
+    },
+    "2025-01-08": {
+      "round_open": "2025-01-06",
+      "latest": "2025-04-08",
+      "round_closed": true
+    },
+    "2025-01-15": {
+      "round_open": "2025-01-13",
+      "latest": "2025-04-15",
+      "round_closed": true
+    },
+    "2025-01-22": {
+      "round_open": "2025-01-20",
+      "latest": "2025-04-22",
+      "round_closed": true
+    },
+    "2025-01-29": {
+      "round_open": "2025-01-27",
+      "latest": "2025-04-29",
+      "round_closed": true
+    },
+    "2025-02-05": {
+      "round_open": "2025-02-03",
+      "latest": "2025-05-06",
+      "round_closed": true
+    },
+    "2025-02-12": {
+      "round_open": "2025-02-10",
+      "latest": "2025-05-13",
+      "round_closed": true
+    },
+    "2025-02-19": {
+      "round_open": "2025-02-17",
+      "latest": "2025-05-20",
+      "round_closed": true
+    },
+    "2025-02-26": {
+      "round_open": "2025-02-24",
+      "latest": "2025-05-27",
+      "round_closed": true
+    },
+    "2025-03-05": {
+      "round_open": "2025-03-03",
+      "latest": "2025-06-03",
+      "round_closed": true
+    },
+    "2025-03-12": {
+      "round_open": "2025-03-10",
+      "latest": "2025-06-10",
+      "round_closed": true
+    },
+    "2025-03-19": {
+      "round_open": "2025-03-17",
+      "latest": "2025-06-17",
+      "round_closed": true
+    },
+    "2025-03-26": {
+      "round_open": "2025-03-24",
+      "latest": "2025-06-24",
+      "round_closed": true
+    },
+    "2025-04-02": {
+      "round_open": "2025-03-31",
+      "latest": "2025-07-01",
+      "round_closed": true
+    },
+    "2025-04-09": {
+      "round_open": "2025-04-07",
+      "latest": "2025-07-08",
+      "round_closed": true
+    },
+    "2025-04-16": {
+      "round_open": "2025-04-14",
+      "latest": "2025-07-15",
+      "round_closed": true
+    },
+    "2025-04-23": {
+      "round_open": "2025-04-21",
+      "latest": "2025-07-22",
+      "round_closed": true
+    },
+    "2025-04-30": {
+      "round_open": "2025-04-28",
+      "latest": "2025-07-29",
+      "round_closed": true
+    },
+    "2025-05-07": {
+      "round_open": "2025-05-05",
+      "latest": "2025-08-05",
+      "round_closed": true
+    },
+    "2025-05-14": {
+      "round_open": "2025-05-12",
+      "latest": "2025-08-12",
+      "round_closed": true
+    },
+    "2025-05-21": {
+      "round_open": "2025-05-19",
+      "latest": "2025-08-19",
+      "round_closed": true
+    },
+    "2025-05-28": {
+      "round_open": "2025-05-26",
+      "latest": "2025-08-26",
+      "round_closed": true
+    },
+    "2025-06-04": {
+      "round_open": "2025-06-02",
+      "latest": "2025-09-02",
+      "round_closed": true
+    },
+    "2025-06-11": {
+      "round_open": "2025-06-09",
+      "latest": "2025-09-09",
+      "round_closed": true
+    },
+    "2025-06-18": {
+      "round_open": "2025-06-16",
+      "latest": "2025-09-16",
+      "round_closed": true
+    },
+    "2025-06-25": {
+      "round_open": "2025-06-23",
+      "latest": "2025-09-23",
+      "round_closed": true
+    },
+    "2025-07-02": {
+      "round_open": "2025-06-30",
+      "latest": "2025-09-30",
+      "round_closed": true
+    },
+    "2025-07-09": {
+      "round_open": "2025-07-07",
+      "latest": "2025-10-07",
+      "round_closed": true
+    },
+    "2025-07-16": {
+      "round_open": "2025-07-14",
+      "latest": "2025-10-14",
+      "round_closed": true
+    },
+    "2025-07-23": {
+      "round_open": "2025-07-21",
+      "latest": "2025-10-21",
+      "round_closed": true
+    },
+    "2025-07-30": {
+      "round_open": "2025-07-28",
+      "latest": "2025-10-28",
+      "round_closed": true
+    },
+    "2025-08-06": {
+      "round_open": "2025-08-04",
+      "latest": "2025-11-04",
+      "round_closed": true
+    },
+    "2025-08-13": {
+      "round_open": "2025-08-11",
+      "latest": "2025-11-11",
+      "round_closed": true
+    },
+    "2025-08-20": {
+      "round_open": "2025-08-18",
+      "latest": "2025-11-18",
+      "round_closed": true
+    },
+    "2025-08-27": {
+      "round_open": "2025-08-25",
+      "latest": "2025-11-25",
+      "round_closed": true
+    },
+    "2025-09-03": {
+      "round_open": "2025-09-01",
+      "latest": "2025-12-02",
+      "round_closed": true
+    },
+    "2025-09-10": {
+      "round_open": "2025-09-08",
+      "latest": "2025-12-09",
+      "round_closed": true
+    },
+    "2025-09-17": {
+      "round_open": "2025-09-15",
+      "latest": "2025-12-16",
+      "round_closed": true
+    },
+    "2025-09-24": {
+      "round_open": "2025-09-22",
+      "latest": "2025-12-23",
+      "round_closed": true
+    },
+    "2025-10-01": {
+      "round_open": "2025-09-29",
+      "latest": "2025-12-30",
+      "round_closed": true
+    },
+    "2025-10-08": {
+      "round_open": "2025-10-06",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-10-15": {
+      "round_open": "2025-10-13",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-10-22": {
+      "round_open": "2025-10-20",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-10-29": {
+      "round_open": "2025-10-27",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-11-05": {
+      "round_open": "2025-11-03",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-11-12": {
+      "round_open": "2025-11-10",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-11-19": {
+      "round_open": "2025-11-17",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-11-26": {
+      "round_open": "2025-11-24",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-12-03": {
+      "round_open": "2025-12-01",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-12-10": {
+      "round_open": "2025-12-08",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-12-17": {
+      "round_open": "2025-12-15",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-12-24": {
+      "round_open": "2025-12-22",
+      "latest": "2025-12-30",
+      "round_closed": false
+    },
+    "2025-12-31": {
+      "round_open": "2025-12-29",
+      "latest": "2025-12-30",
+      "round_closed": false
+    }
+  },
+  "intervals": [50, 80, 95],
+  "default_interval": 80,
+  "current_nowcast_date": "2025-12-31",
+  "last_updated": "2026-01-03 02:24:25.280586"
+}

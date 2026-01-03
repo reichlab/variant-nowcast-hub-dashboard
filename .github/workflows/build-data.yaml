@@ -1,0 +1,152 @@
+name: "Rebuild Dashboard Data"
+
+# Generate pre-computed JSON data files for the interactive dashboard.
+# Data is committed to the 'dashboard-data' branch and fetched by the frontend.
+
+on:
+  schedule:
+    # Run every Thursday at 10:00 UTC (after hub round closes)
+    - cron: "0 10 * * 4"
+
+  workflow_dispatch:
+    inputs:
+      nowcast_dates:
+        description: "Comma-separated nowcast dates to process (blank for latest only)"
+        type: string
+        required: false
+        default: ""
+      regenerate:
+        description: "Regenerate all historical data"
+        type: boolean
+        required: false
+        default: false
+      publish:
+        description: "Push data to dashboard-data branch"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3'
+          use-public-rspm: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Install R dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::here
+            any::dplyr
+            any::tidyr
+            any::lubridate
+            any::jsonlite
+            any::readr
+            any::tibble
+            any::arrow
+            any::testthat
+            github::hubverse-org/hubData
+            github::hubverse-org/hubUtils
+
+      - name: Run tests
+        run: |
+          testthat::test_dir("src/dashboard/tests", stop_on_failure = TRUE)
+        shell: Rscript {0}
+
+      - name: Generate data
+        env:
+          NOWCAST_DATES: ${{ inputs.nowcast_dates }}
+          REGENERATE: ${{ inputs.regenerate }}
+        run: |
+          source("src/dashboard/pipeline.R")
+
+          nowcast_dates <- Sys.getenv("NOWCAST_DATES", "")
+          regenerate <- as.logical(Sys.getenv("REGENERATE", "FALSE"))
+
+          if (is.na(regenerate)) regenerate <- FALSE
+
+          run_pipeline(
+            nowcast_dates = if (nowcast_dates == "") NULL else nowcast_dates,
+            regenerate = regenerate
+          )
+        shell: Rscript {0}
+
+      - name: Checkout dashboard-data branch
+        if: ${{ inputs.publish != false }}
+        uses: actions/checkout@v4
+        with:
+          ref: dashboard-data
+          path: data-branch
+          fetch-depth: 0
+
+      - name: Copy generated data to branch
+        if: ${{ inputs.publish != false }}
+        run: |
+          # Create directories if they don't exist
+          mkdir -p data-branch/forecasts
+          mkdir -p data-branch/targets/round-open
+          mkdir -p data-branch/targets/latest
+
+          # Copy new data files
+          if [ -d "output/forecasts" ]; then
+            cp -r output/forecasts/* data-branch/forecasts/ 2>/dev/null || true
+          fi
+
+          if [ -d "output/targets/round-open" ]; then
+            cp -r output/targets/round-open/* data-branch/targets/round-open/ 2>/dev/null || true
+          fi
+
+          if [ -d "output/targets/latest" ]; then
+            cp -r output/targets/latest/* data-branch/targets/latest/ 2>/dev/null || true
+          fi
+
+          # Copy dashboard options
+          if [ -f "output/dashboard-options.json" ]; then
+            cp output/dashboard-options.json data-branch/
+          fi
+
+          echo "Data files copied successfully"
+
+      - name: Commit and push data
+        if: ${{ inputs.publish != false }}
+        run: |
+          cd data-branch
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update dashboard data $(date +%Y-%m-%d)"
+            git push
+            echo "Data pushed to dashboard-data branch"
+          fi
+
+      - name: Upload artifacts (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-data
+          path: output/
+          retention-days: 7

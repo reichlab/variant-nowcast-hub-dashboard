@@ -301,9 +301,9 @@ viewof showIntervals = {
 //| echo: false
 viewof intervalLevel = {
   const savedValue = window._dashboardState?.intervalSettings?.intervalLevel;
-  const initialValue = savedValue !== undefined ? savedValue : 80;
+  const initialValue = savedValue !== undefined ? savedValue : 95;
 
-  const select = Inputs.select([50, 80, 95], {
+  const select = Inputs.select([50, 95], {
     value: initialValue,
     format: d => `${d}%`,
     disabled: !showIntervals
@@ -424,12 +424,11 @@ viewof selectedModels = {
 
   // Determine which models should be checked
   // Use previous selections if available, otherwise use defaults
+  // Show checked state even for unavailable models to indicate saved selection
   const savedSelections = window._dashboardState?.modelSelections;
   const getInitialChecked = (model) => {
-    const isAvailable = availableModels.includes(model);
-    if (!isAvailable) return false;
     if (savedSelections !== null && savedSelections !== undefined) {
-      // Use saved selection state
+      // Use saved selection state (regardless of availability)
       return savedSelections.includes(model);
     }
     // First load: use defaults
@@ -464,10 +463,16 @@ viewof selectedModels = {
     container.appendChild(label);
   });
 
-  // Update value helper - also saves to window state
+  // Update value helper - saves to window state, preserving unavailable selections
   const updateValue = () => {
-    container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
-    if (window._dashboardState) window._dashboardState.modelSelections = container.value;
+    const currentlyChecked = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    container.value = currentlyChecked;
+    if (window._dashboardState) {
+      // Preserve selections for models not available on this date
+      const previousSelections = window._dashboardState.modelSelections || [];
+      const unavailableSelections = previousSelections.filter(m => !availableModels.includes(m));
+      window._dashboardState.modelSelections = [...currentlyChecked, ...unavailableSelections];
+    }
     container.dispatchEvent(new Event('input'));
   };
 
@@ -481,9 +486,8 @@ viewof selectedModels = {
     updateValue();
   };
 
-  // Initial value and save to state
+  // Initial value - don't overwrite saved state to preserve unavailable selections
   container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
-  if (window._dashboardState) window._dashboardState.modelSelections = container.value;
   container.oninput = updateValue;
 
   return container;
@@ -606,8 +610,8 @@ config = {
       initial_selected_models: ["model1"],
       clades_by_date: {"2025-01-01": ["24A", "24B", "other"]},
       clade_labels: {"24A": "24A", "24B": "24B", "other": "other"},
-      intervals: [50, 80, 95],
-      default_interval: 80
+      intervals: [50, 95],
+      default_interval: 95
     };
   }
 }
@@ -693,10 +697,9 @@ getQuantileCols = (level, type) => {
   const prefix = type === "prediction" ? "multinomial_q" : "q";
   const mapping = {
     50: { lower: `${prefix}0.25`, upper: `${prefix}0.75` },
-    80: { lower: `${prefix}0.1`, upper: `${prefix}0.9` },
     95: { lower: `${prefix}0.025`, upper: `${prefix}0.975` }
   };
-  return mapping[level] || mapping[80];
+  return mapping[level] || mapping[95];
 }
 
 // Build Plotly traces
@@ -708,7 +711,7 @@ buildTraces = () => {
 
   // Only compute interval columns if intervals are shown
   const shouldShowIntervals = showIntervals === true;
-  const level = intervalLevel || 80;
+  const level = intervalLevel || 95;
   const type = effectiveIntervalType || "confidence";
   const qCols = shouldShowIntervals ? getQuantileCols(level, type) : null;
 

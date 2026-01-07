@@ -1047,6 +1047,6 @@ Plotly = require("https://cdn.plot.ly/plotly-2.27.0.min.js")
 **About this visualization:**
 
 - **Lines** show model predictions (mean values) for each clade
-- **Shaded ribbons** show prediction intervals at the selected confidence level
+- **Shaded ribbons** show uncertainty intervals: *Confidence intervals* reflect model uncertainty only, while *Prediction intervals* (available when "Round close" or "Last update" data is selected) also incorporate sampling uncertainty assuming multinomially distributed counts
 - **Open circles** show observed data available when the round opened; **filled circles** show the latest data update; dot size reflects the total number of sequences for that week
 - **Vertical dashed line** indicates the nowcast/submission date

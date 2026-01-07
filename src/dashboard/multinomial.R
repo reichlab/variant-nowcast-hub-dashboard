@@ -1,121 +1,123 @@
 # Multinomial Prediction Interval Functions
 # ==========================================
 # Functions for computing prediction intervals based on multinomial sampling.
-# These intervals account for sampling uncertainty in the target data.
+# These intervals account for BOTH model uncertainty (via samples) AND
+# sampling uncertainty (via multinomial draws).
 
 library(dplyr)
 library(tidyr)
 
-#' Compute multinomial prediction intervals for a single set of predictions
+#' Compute multinomial prediction intervals for full prediction dataset
 #'
-#' @param predicted_props Named numeric vector of predicted proportions (must sum to 1)
-#' @param observed_total Total count of observed sequences (n for multinomial)
-#' @param n_draws Number of multinomial draws for simulation (default 1000)
+#' This function properly incorporates both sources of uncertainty:
+#' 1. Model uncertainty: by using the sample predictions (not means)
+#' 2. Sampling uncertainty: by drawing from multinomial distribution
+#'
+#' For each model/location/date:
+#' - Iterate over each sample prediction (e.g., 100 samples)
+#' - For each sample, draw multinomial samples (e.g., 10 draws)
+#' - Pool all draws (100 * 10 = 1000) and compute quantiles
+#'
+#' @param sample_predictions Tibble with columns: model_id, target_date, location,
+#'        clade, output_type_id (sample index), value (predicted proportion)
+#' @param target_data Tibble with columns: target_date, location, clade, count
+#' @param draws_per_sample Number of multinomial draws per model sample (default 10)
 #' @param quantile_probs Vector of quantile probabilities to compute
 #' @param seed Optional seed for reproducibility
-#' @return Tibble with columns: clade, quantile_prob, multinomial_value
-compute_multinomial_pi_single <- function(
-    predicted_props,
-    observed_total,
-    n_draws = 1000,
+#' @return Tibble with multinomial PI values
+compute_multinomial_pi <- function(
+    sample_predictions,
+    target_data,
+    draws_per_sample = 10,
     quantile_probs = c(0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975),
     seed = NULL
 ) {
-  # Handle zero total case
-  if (is.na(observed_total) || observed_total == 0) {
-    return(tidyr::expand_grid(
-      clade = names(predicted_props),
-      quantile_prob = quantile_probs
-    ) |>
-      dplyr::mutate(multinomial_value = NA_real_))
-  }
-
   # Set seed if provided
   if (!is.null(seed)) {
     set.seed(seed)
   }
 
-  # Draw from multinomial distribution
-  # rmultinom returns matrix with n_draws columns, nrow = number of categories
-  draws <- stats::rmultinom(n_draws, size = observed_total, prob = predicted_props)
-
-  # Convert counts to proportions
-  proportions <- draws / observed_total
-
-  # Compute quantiles for each clade
-  results <- lapply(seq_along(predicted_props), function(i) {
-    clade_name <- names(predicted_props)[i]
-    clade_proportions <- proportions[i, ]
-    quantile_values <- stats::quantile(clade_proportions, probs = quantile_probs, names = FALSE)
-
-    tibble::tibble(
-      clade = clade_name,
-      quantile_prob = quantile_probs,
-      multinomial_value = round(quantile_values, 4)
-    )
-  })
-
-  dplyr::bind_rows(results)
-}
-
-#' Compute multinomial prediction intervals for full prediction dataset
-#'
-#' @param predictions Tibble with columns: model_id, target_date, location, clade, value (mean prediction)
-#' @param target_data Tibble with columns: target_date, location, clade, count (and optionally total)
-#' @param n_draws Number of multinomial draws
-#' @param quantile_probs Vector of quantile probabilities
-#' @param seed Optional seed for reproducibility
-#' @return Tibble with multinomial PI values
-compute_multinomial_pi <- function(
-    predictions,
-    target_data,
-    n_draws = 1000,
-    quantile_probs = c(0.025, 0.1, 0.25, 0.5, 0.75, 0.9, 0.975),
-    seed = NULL
-) {
   # Get total counts per location-date from target data
   totals <- target_data |>
     dplyr::group_by(target_date, location) |>
     dplyr::summarize(total = sum(count), .groups = "drop")
 
+  # Get unique clades for consistent ordering
+  all_clades <- unique(sample_predictions$clade)
+
   # Process each model-location-date combination
-  results <- predictions |>
+  results <- sample_predictions |>
     dplyr::group_by(model_id, target_date, location) |>
     dplyr::group_split() |>
     lapply(function(group_data) {
       model <- unique(group_data$model_id)
-      target_date <- unique(group_data$target_date)
-      location <- unique(group_data$location)
+      td <- unique(group_data$target_date)
+      loc <- unique(group_data$location)
 
-      # Get predicted proportions as named vector
-      predicted_props <- stats::setNames(group_data$value, group_data$clade)
-
-      # Normalize to ensure sums to 1 (handle floating point)
-      predicted_props <- predicted_props / sum(predicted_props)
-
-      # Get observed total
+      # Get observed total for this location-date
       total_row <- totals |>
-        dplyr::filter(target_date == !!target_date, location == !!location)
-
+        dplyr::filter(target_date == td, location == loc)
       observed_total <- if (nrow(total_row) == 0) 0 else total_row$total[1]
 
-      # Compute multinomial PIs
-      pi_result <- compute_multinomial_pi_single(
-        predicted_props = predicted_props,
-        observed_total = observed_total,
-        n_draws = n_draws,
-        quantile_probs = quantile_probs,
-        seed = seed
-      )
-
-      # Add grouping columns
-      pi_result |>
-        dplyr::mutate(
+      # Handle zero total case - return NAs
+      if (is.na(observed_total) || observed_total == 0) {
+        return(tidyr::expand_grid(
           model_id = model,
-          target_date = target_date,
-          location = location
+          target_date = td,
+          location = loc,
+          clade = unique(group_data$clade),
+          quantile_prob = quantile_probs
         ) |>
-        dplyr::select(model_id, target_date, location, clade, quantile_prob, multinomial_value)
+          dplyr::mutate(multinomial_value = NA_real_))
+      }
+
+      # Get unique sample IDs
+      sample_ids <- unique(group_data$output_type_id)
+
+      # For each sample, draw multinomial samples
+      all_proportions <- lapply(sample_ids, function(sample_id) {
+        # Get this sample's predicted proportions
+        sample_data <- group_data |>
+          dplyr::filter(output_type_id == sample_id)
+
+        # Create named vector of proportions
+        predicted_props <- stats::setNames(sample_data$value, sample_data$clade)
+
+        # Normalize to ensure sums to 1 (handle floating point issues)
+        predicted_props <- predicted_props / sum(predicted_props)
+
+        # Draw from multinomial distribution
+        draws <- stats::rmultinom(draws_per_sample, size = observed_total, prob = predicted_props)
+
+        # Convert counts to proportions (matrix: clades x draws)
+        draws / observed_total
+      })
+
+      # Combine all draws into single matrix (clades x total_draws)
+      combined_proportions <- do.call(cbind, all_proportions)
+
+      # Get clade names from the first sample
+      clade_names <- names(stats::setNames(
+        group_data |> dplyr::filter(output_type_id == sample_ids[1]) |> dplyr::pull(value),
+        group_data |> dplyr::filter(output_type_id == sample_ids[1]) |> dplyr::pull(clade)
+      ))
+
+      # Compute quantiles for each clade
+      clade_results <- lapply(seq_along(clade_names), function(i) {
+        clade_proportions <- combined_proportions[i, ]
+        quantile_values <- stats::quantile(clade_proportions, probs = quantile_probs, names = FALSE)
+
+        tibble::tibble(
+          model_id = model,
+          target_date = td,
+          location = loc,
+          clade = clade_names[i],
+          quantile_prob = quantile_probs,
+          multinomial_value = round(quantile_values, 4)
+        )
+      })
+
+      dplyr::bind_rows(clade_results)
     }) |>
     dplyr::bind_rows()
 

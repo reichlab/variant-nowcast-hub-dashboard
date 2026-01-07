@@ -235,7 +235,8 @@ process_predictions <- function(predictions, quantile_probs = QUANTILE_PROBS) {
 
   list(
     means = all_means,
-    quantiles = quantiles
+    quantiles = quantiles,
+    samples = sample_dat
   )
 }
 
@@ -377,12 +378,13 @@ run_pipeline <- function(
       }
       target_data_latest_processed <- process_daily_target_data(target_data_latest)
 
-      # Compute multinomial prediction intervals
+      # Compute multinomial prediction intervals using samples (not means)
+      # This properly incorporates both model uncertainty and sampling uncertainty
       message("  Computing multinomial PIs...")
       multinomial_pi <- compute_multinomial_pi(
-        predictions = processed$means,
+        sample_predictions = processed$samples,
         target_data = target_data_latest_processed,
-        n_draws = N_MULTINOMIAL_DRAWS,
+        draws_per_sample = 10,  # With ~100 samples, this gives ~1000 total draws
         quantile_probs = QUANTILE_PROBS,
         seed = 42  # For reproducibility
       )

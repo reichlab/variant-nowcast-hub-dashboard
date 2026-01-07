@@ -581,8 +581,8 @@ viewof selectedClades = {
 //| output: false
 
 // Configuration and data loading
-// Use relative URLs for local development, GitHub raw URLs for production
-baseUrl = window.location.hostname === "localhost" ? "/output" : "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub-dashboard/dashboard-data"
+// Always use GitHub raw URLs (remote data)
+baseUrl = "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub-dashboard/dashboard-data"
 
 // Cache buster for development - change this to force reload
 cacheBuster = `?v=${Date.now()}`

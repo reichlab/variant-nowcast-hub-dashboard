@@ -2,6 +2,19 @@
 
 This guide provides context for developers working on the interactive "Explore" dashboard feature of the Variant Nowcast Hub Dashboard.
 
+## Hubverse Dashboard Context
+
+This repository is a **hubverse dashboard** for the Variant Nowcast Hub. Hubverse dashboards are standardized visualization tools for forecasting hubs, documented at [docs.hubverse.io/en/latest/user-guide/dashboards.html](https://docs.hubverse.io/en/latest/user-guide/dashboards.html).
+
+Standard hubverse dashboards use:
+- **Quarto** for site generation
+- **`site-config.yml`** for site configuration (hub reference, title, navigation)
+- **PredTimeChart** module for interactive forecast visualization
+- **PredEvals** module for model evaluation metrics
+- Separate data branches (`ptc/data`, `predevals/data`) fetched dynamically
+
+This dashboard follows hubverse conventions for site configuration (`site-config.yml`) but implements a **custom interactive visualization** instead of the standard PredTimeChart module. This allows for domain-specific features like multinomial prediction intervals and clade-specific displays.
+
 ## Overview
 
 The dashboard has two visualization approaches:
@@ -125,40 +138,77 @@ window._dashboardState = {
 ## Local Development
 
 ### Prerequisites
-- R 4.3+ with packages: hubData, hubUtils, arrow, dplyr, tidyr, jsonlite
-- Quarto CLI
-- Node.js (for Quarto's OJS runtime)
+- Quarto CLI (https://quarto.org/docs/get-started/)
+- For R pipeline work: R 4.3+ with packages: hubData, hubUtils, arrow, dplyr, tidyr, jsonlite
 
-### Setup
+### Quick Start: Preview the Explore Dashboard
 
-1. **Generate data locally:**
-   ```r
-   source("src/dashboard/pipeline.R")
-   run_pipeline()
+The explore page fetches data from the remote `dashboard-data` branch, so no local data setup is required for UI development.
+
+1. **Create a minimal `_quarto.yml`** in the `pages/` directory:
+   ```yaml
+   project:
+     type: website
+     render:
+       - index.qmd
+       - explore.qmd
+
+   website:
+     title: "Variant Nowcast Hub (Local)"
+     navbar:
+       left:
+         - text: "Home"
+           href: index.qmd
+         - text: "Explore"
+           href: explore.qmd
    ```
-   This creates `output/` directory with JSON files.
 
-2. **Create symlink for local serving:**
-   ```bash
-   mkdir -p pages/_site
-   ln -s ../../output pages/_site/output
-   ```
+   The `render:` list ensures only these pages are built (skipping the weekly reports).
 
-3. **Start Quarto preview:**
+2. **Start Quarto preview:**
    ```bash
    cd pages
    quarto preview --port 4444
    ```
 
-4. **Open browser:** http://localhost:4444/explore.html
+3. **Open browser:** http://localhost:4444/
 
-The frontend detects `localhost` and fetches from `/output` instead of the GitHub raw URL.
+This renders only the index and explore pages. The weekly reports are not needed for local preview (they're pre-rendered HTML fragments in `includes/`).
+
+> **Note:** The `_quarto.yml` file is gitignored because the production site is built via the [hubverse control room](https://github.com/hubverse-org/hub-dashboard-control-room) workflow, which generates its own quarto configuration from `site-config.yml`.
 
 ### Testing Changes
 
-- **R pipeline changes:** Re-run `run_pipeline()` and refresh browser
 - **Frontend changes:** Quarto auto-reloads on file save
-- **Check browser console:** Data fetching logs and errors appear there
+- **Check browser console:** Data fetching logs appear there (e.g., "Fetching forecast: ...")
+
+### Working with Local Data (Optional)
+
+If you need to test changes to the R data pipeline:
+
+1. **Generate data locally:**
+   ```r
+   source("src/dashboard/pipeline.R")
+   run_pipeline()  # Processes latest nowcast date
+   ```
+   This creates an `output/` directory with JSON files.
+
+2. **Modify `explore.qmd`** to use local data by changing the `baseUrl`:
+   ```javascript
+   // Change from:
+   baseUrl = "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub-dashboard/dashboard-data"
+   // To:
+   baseUrl = "/output"
+   ```
+
+3. **Create symlink for local serving:**
+   ```bash
+   ln -s ../../output pages/_site/output
+   ```
+
+4. **Restart quarto preview** and refresh the browser.
+
+Remember to revert the `baseUrl` change before committing.
 
 ## JSON Schemas
 
@@ -282,4 +332,4 @@ See `docs/KNOWN_ISSUES.md` for:
 
 ---
 
-*Last updated: 2025-01-03*
+*Last updated: 2026-01-06*

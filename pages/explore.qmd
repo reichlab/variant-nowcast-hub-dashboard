@@ -324,59 +324,41 @@ viewof intervalLevel = {
 
 ```{ojs}
 //| echo: false
-// Prediction intervals require latest data (observations after nowcast date)
+// Prediction intervals require round-close/latest data
 predictionIntervalsAvailable = selectedDataVersions && selectedDataVersions.includes("latest")
 
 viewof intervalType = {
   const container = html`<div style="line-height: 1.4;"></div>`;
 
   const options = [
-    { value: "confidence", label: "Confidence intervals", enabled: true },
-    { value: "prediction", label: "Prediction intervals", enabled: predictionIntervalsAvailable }
+    { value: "confidence", label: "Confidence intervals", disabled: !showIntervals },
+    { value: "prediction", label: "Prediction intervals", disabled: !showIntervals || !predictionIntervalsAvailable }
   ];
 
-  // Get saved value or default to confidence
-  const savedValue = window._dashboardState?.intervalSettings?.intervalType;
-  const initialValue = savedValue || "confidence";
-
-  options.forEach((opt, i) => {
-    const id = `interval-type-${opt.value}`;
-    const disabled = !opt.enabled || !showIntervals;
-    // Use saved value if available and option is enabled, otherwise use first enabled
-    const isChecked = !disabled && opt.value === initialValue;
-    const label = html`<label style="display: block; margin-bottom: 0.1rem; ${disabled ? 'opacity: 0.4; cursor: not-allowed;' : ''}">
+  options.forEach(opt => {
+    const label = html`<label style="display: block; margin-bottom: 0.1rem; ${opt.disabled ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;'}">
       <input type="radio" name="intervalType" value="${opt.value}"
-             ${isChecked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+             ${opt.value === "confidence" ? 'checked' : ''}
+             ${opt.disabled ? 'disabled' : ''}>
       ${opt.label}
     </label>`;
     container.appendChild(label);
   });
 
-  // If no radio is checked, check the first enabled one
-  if (!container.querySelector('input:checked')) {
-    const firstEnabled = container.querySelector('input:not(:disabled)');
-    if (firstEnabled) firstEnabled.checked = true;
-  }
+  container.value = "confidence";
 
-  const updateValue = () => {
-    const checked = container.querySelector('input:checked');
-    container.value = checked ? checked.value : "confidence";
-    if (window._dashboardState) {
-      if (!window._dashboardState.intervalSettings) {
-        window._dashboardState.intervalSettings = {};
-      }
-      window._dashboardState.intervalSettings.intervalType = container.value;
-    }
-  };
-
-  container.value = container.querySelector('input:checked')?.value || "confidence";
-  container.oninput = updateValue;
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', () => {
+      container.value = container.querySelector('input:checked')?.value || "confidence";
+      container.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
 
   return container;
 }
 
-// Force confidence intervals when prediction intervals not available
-effectiveIntervalType = predictionIntervalsAvailable ? intervalType : "confidence"
+// Use selected interval type (PI only works when available)
+effectiveIntervalType = intervalType
 ```
 
 </div>
@@ -963,17 +945,18 @@ buildLayout = () => {
     });
   });
 
-  // Add vertical line for nowcast date
-  if (selectedNowcastDate) {
-    layout.shapes = [{
+  // Add vertical line for nowcast date on each subplot
+  if (selectedNowcastDate && selectedClades && selectedClades.length > 0) {
+    layout.shapes = selectedClades.map((clade, i) => ({
       type: "line",
       x0: selectedNowcastDate,
       x1: selectedNowcastDate,
+      xref: i === 0 ? "x" : `x${i + 1}`,
       y0: 0,
       y1: 1,
-      yref: "paper",
+      yref: i === 0 ? "y domain" : `y${i + 1} domain`,
       line: { color: "gray", dash: "dash", width: 1 }
-    }];
+    }));
   }
 
   return layout;

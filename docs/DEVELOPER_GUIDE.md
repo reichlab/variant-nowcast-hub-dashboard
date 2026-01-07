@@ -161,9 +161,14 @@ The explore page fetches data from the remote `dashboard-data` branch, so no loc
            href: index.qmd
          - text: "Explore"
            href: explore.qmd
+
+   format:
+     html:
+       theme: yeti
    ```
 
    The `render:` list ensures only these pages are built (skipping the weekly reports).
+   The `yeti` theme matches the hubverse production dashboard styling.
 
 2. **Start Quarto preview:**
    ```bash
@@ -172,6 +177,11 @@ The explore page fetches data from the remote `dashboard-data` branch, so no loc
    ```
 
 3. **Open browser:** http://localhost:4444/
+
+4. **Stop the preview:** Press `Ctrl+C` in the terminal. If you closed the terminal and the port is stuck, free it with:
+   ```bash
+   lsof -ti:4444 | xargs kill
+   ```
 
 This renders only the index and explore pages. The weekly reports are not needed for local preview (they're pre-rendered HTML fragments in `includes/`).
 

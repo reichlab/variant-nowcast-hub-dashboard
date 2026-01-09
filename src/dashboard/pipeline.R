@@ -295,10 +295,24 @@ run_pipeline <- function(
 
   message(paste("Processing", length(dates_to_process), "nowcast date(s)..."))
 
-  # Track all models, clades, and as_of dates by date for dashboard-options.json
+  # Track all models for dashboard-options.json
   all_models <- character(0)
+
+  # Pre-populate clades and as_of dates for ALL dates (not just processed ones)
+  # This ensures dashboard-options.json contains all historical dates
+  message("Building metadata for all nowcast dates...")
   clades_by_date <- list()
   as_of_dates_by_nowcast <- list()
+  current_date <- Sys.Date()
+
+  for (date in all_nowcast_dates) {
+    clades_by_date[[date]] <- get_clades_for_date(hub_config, date)
+    as_of_dates_by_nowcast[[date]] <- list(
+      round_open = as.character(get_monday_before(date)),
+      latest = as.character(current_date),  # Will be updated for processed dates
+      round_closed = is_round_closed(date)
+    )
+  }
 
   # Process each nowcast date
   for (nowcast_date in dates_to_process) {
@@ -425,13 +439,13 @@ run_pipeline <- function(
   export_options_json(
     locations = US_LOCATIONS,
     location_names = LOCATION_NAMES,
-    nowcast_dates = dates_to_process,
+    nowcast_dates = all_nowcast_dates,
     models = all_models,
     initial_selected_models = initial_selected_models,
     clades_by_date = clades_by_date,
     clade_labels = clade_labels_vec,
     as_of_dates_by_nowcast = as_of_dates_by_nowcast,
-    current_nowcast_date = tail(dates_to_process, 1),
+    current_nowcast_date = tail(all_nowcast_dates, 1),
     output_dir = output_dir
   )
 

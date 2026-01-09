@@ -1,0 +1,1052 @@
+---
+title: "Explore Predictions"
+format:
+  html:
+    page-layout: full
+    toc: false
+execute:
+  echo: false
+---
+
+```{=html}
+<style>
+/* Aggressively reduce page margins */
+body {
+  padding: 0 !important;
+}
+.page-columns, .page-full {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  grid-template-columns: 1fr !important;
+}
+#quarto-content {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+.content, main.content, main {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0 0.5rem !important;
+  margin: 0 !important;
+}
+.container-fluid {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  max-width: 100% !important;
+}
+.grid {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+/* Make chart fill available space */
+.js-plotly-plot, .plotly, .plot-container {
+  width: 100% !important;
+  min-width: 0;
+}
+.g-col-8 {
+  flex: 1 !important;
+  max-width: none !important;
+  min-width: 0;
+  overflow: hidden;
+}
+/* Ensure OJS cell fills width */
+.g-col-8 .cell > div {
+  width: 100%;
+}
+
+.sidebar-controls {
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.sidebar-controls label {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+.sidebar-controls .control-group {
+  margin-bottom: 0.75rem;
+}
+.checkbox-group {
+  border: 1px solid #dee2e6;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background: white;
+}
+.checkbox-group label {
+  display: block;
+  margin-bottom: 0.1rem;
+  line-height: 1.3;
+}
+.checkbox-group-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.checkbox-group-buttons button {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.checkbox-group-buttons button:hover {
+  background: #e9ecef;
+}
+.loading-message {
+  padding: 2rem;
+  text-align: center;
+  color: #6c757d;
+}
+</style>
+```
+
+::: {.grid}
+
+::: {.g-col-2}
+<div class="sidebar-controls">
+
+<div class="control-group">
+
+**Location**
+
+```{ojs}
+//| echo: false
+viewof selectedLocation = {
+  if (!config) return html`<div class="loading-message">Loading...</div>`;
+  return Inputs.select(config.locations, {
+    format: d => config.location_names[d] || d,
+    value: "CA"
+  });
+}
+```
+
+</div>
+
+<div class="control-group">
+
+**Nowcast Date**
+
+```{ojs}
+//| echo: false
+viewof selectedNowcastDate = {
+  if (!config) return html`<div class="loading-message">Loading...</div>`;
+  const dates = [...config.nowcast_dates].reverse();
+
+  const select = Inputs.select(dates, {
+    value: config.current_nowcast_date
+  });
+
+  // Add keyboard navigation (left/right arrows)
+  const keyHandler = (e) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      const currentIdx = dates.indexOf(select.value);
+      if (currentIdx === -1) return;
+
+      let newIdx;
+      if (e.key === "ArrowLeft") {
+        // Left = older date (higher index since dates are reverse chronological)
+        newIdx = Math.min(dates.length - 1, currentIdx + 1);
+      } else {
+        // Right = more recent date (lower index since dates are reverse chronological)
+        newIdx = Math.max(0, currentIdx - 1);
+      }
+
+      if (newIdx !== currentIdx) {
+        select.value = dates[newIdx];
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  };
+
+  document.addEventListener('keydown', keyHandler);
+
+  // Clean up on removal
+  const cleanup = () => {
+    document.removeEventListener('keydown', keyHandler);
+  };
+  select.addEventListener('remove', cleanup);
+
+  // Also clean up via MutationObserver
+  const observer = new MutationObserver(() => {
+    if (!document.contains(select)) {
+      cleanup();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  return select;
+}
+```
+
+<small style="color: #666;">Use ← → arrow keys to change date</small>
+
+</div>
+
+<div class="control-group">
+
+**Target Data as of**
+
+```{ojs}
+//| echo: false
+viewof selectedDataVersions = {
+  const container = html`<div class="checkbox-group" style="padding: 0.3rem;"></div>`;
+
+  if (!config || !selectedNowcastDate || !config.as_of_dates) {
+    container.value = ["round-open"];
+    return container;
+  }
+
+  const asOfDates = config.as_of_dates[selectedNowcastDate] || {};
+  const roundOpenDate = asOfDates.round_open || "";
+  const latestDate = asOfDates.latest || "";
+  const roundClosed = asOfDates.round_closed || false;
+
+  // Format labels with dates
+  const roundOpenLabel = `Round open (${roundOpenDate})`;
+  const latestLabel = roundClosed
+    ? `Round close (${latestDate})`
+    : `Last update (${latestDate})`;
+
+  const options = [
+    { value: "round-open", label: roundOpenLabel },
+    { value: "latest", label: latestLabel }
+  ];
+
+  // Get saved selections or default to round-open
+  const savedSelections = window._dashboardState?.dataVersionSelections;
+  const getInitialChecked = (value) => {
+    if (savedSelections === null || savedSelections === undefined) {
+      return value === "round-open"; // Default: only round-open selected
+    }
+    return savedSelections.includes(value);
+  };
+
+  options.forEach((opt, i) => {
+    const id = `data-version-${opt.value}`;
+    const checked = getInitialChecked(opt.value);
+    const label = html`<label style="display: block; margin-bottom: 0.1rem; cursor: pointer;">
+      <input type="checkbox" id="${id}" value="${opt.value}" ${checked ? 'checked' : ''}>
+      ${opt.label}
+    </label>`;
+    container.appendChild(label);
+  });
+
+  const updateValue = () => {
+    container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    // Ensure at least one is selected
+    if (container.value.length === 0) {
+      container.value = ["round-open"];
+      container.querySelector('input[value="round-open"]').checked = true;
+    }
+    if (window._dashboardState) {
+      window._dashboardState.dataVersionSelections = container.value;
+    }
+    container.dispatchEvent(new Event('input'));
+  };
+
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', updateValue);
+  });
+
+  // Set initial value
+  container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+  if (container.value.length === 0) {
+    container.value = ["round-open"];
+    container.querySelector('input[value="round-open"]').checked = true;
+  }
+  if (window._dashboardState) {
+    window._dashboardState.dataVersionSelections = container.value;
+  }
+
+  return container;
+}
+```
+
+</div>
+
+<div class="control-group">
+
+**Intervals**
+
+```{ojs}
+//| echo: false
+viewof showIntervals = {
+  const savedValue = window._dashboardState?.intervalSettings?.showIntervals;
+  const initialValue = savedValue !== undefined ? savedValue : true;
+
+  const toggle = Inputs.toggle({
+    label: "Show intervals",
+    value: initialValue
+  });
+
+  toggle.addEventListener('input', () => {
+    if (window._dashboardState) {
+      if (!window._dashboardState.intervalSettings) {
+        window._dashboardState.intervalSettings = {};
+      }
+      window._dashboardState.intervalSettings.showIntervals = toggle.value;
+    }
+  });
+
+  return toggle;
+}
+```
+
+```{ojs}
+//| echo: false
+viewof intervalLevel = {
+  const savedValue = window._dashboardState?.intervalSettings?.intervalLevel;
+  const initialValue = savedValue !== undefined ? savedValue : 95;
+
+  const select = Inputs.select([50, 95], {
+    value: initialValue,
+    format: d => `${d}%`,
+    disabled: !showIntervals
+  });
+
+  select.addEventListener('input', () => {
+    if (window._dashboardState) {
+      if (!window._dashboardState.intervalSettings) {
+        window._dashboardState.intervalSettings = {};
+      }
+      window._dashboardState.intervalSettings.intervalLevel = select.value;
+    }
+  });
+
+  return select;
+}
+```
+
+```{ojs}
+//| echo: false
+// Prediction intervals require round-close/latest data
+predictionIntervalsAvailable = selectedDataVersions && selectedDataVersions.includes("latest")
+
+viewof intervalType = {
+  const container = html`<div style="line-height: 1.4;"></div>`;
+
+  const options = [
+    { value: "confidence", label: "Confidence intervals", disabled: !showIntervals },
+    { value: "prediction", label: "Prediction intervals", disabled: !showIntervals || !predictionIntervalsAvailable }
+  ];
+
+  options.forEach(opt => {
+    const label = html`<label style="display: block; margin-bottom: 0.1rem; ${opt.disabled ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;'}">
+      <input type="radio" name="intervalType" value="${opt.value}"
+             ${opt.value === "confidence" ? 'checked' : ''}
+             ${opt.disabled ? 'disabled' : ''}>
+      ${opt.label}
+    </label>`;
+    container.appendChild(label);
+  });
+
+  container.value = "confidence";
+
+  container.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', () => {
+      container.value = container.querySelector('input:checked')?.value || "confidence";
+      container.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
+
+  return container;
+}
+
+// Use selected interval type (PI only works when available)
+effectiveIntervalType = intervalType
+```
+
+</div>
+
+</div>
+:::
+
+::: {.g-col-2}
+<div class="sidebar-controls">
+
+<div class="control-group">
+
+**Models**
+
+```{ojs}
+//| echo: false
+// Get list of models available for current location-date
+availableModels = {
+  if (!forecastData || !forecastData.models) return [];
+  return Object.keys(forecastData.models);
+}
+
+// Color palette for models (same as used in chart)
+modelColors = [
+  "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
+  "#D55E00", "#CC79A7", "#999999", "#000000", "#B2DF8A",
+  "#FB9A99", "#CAB2D6", "#FDBF6F", "#1F78B4", "#33A02C"
+]
+
+viewof selectedModels = {
+  if (!config) return html`<div class="loading-message">Loading...</div>`;
+
+  // Sort models: default selected first, then alphabetical
+  const defaultModels = config.initial_selected_models || [];
+  const sortedModels = [
+    ...defaultModels,
+    ...config.models.filter(m => !defaultModels.includes(m)).sort()
+  ];
+
+  // Create model-to-color mapping based on config order
+  const colorMap = {};
+  config.models.forEach((model, idx) => {
+    colorMap[model] = modelColors[idx % modelColors.length];
+  });
+
+  // Determine which models should be checked
+  // Use previous selections if available, otherwise use defaults
+  // Show checked state even for unavailable models to indicate saved selection
+  const savedSelections = window._dashboardState?.modelSelections;
+  const getInitialChecked = (model) => {
+    if (savedSelections !== null && savedSelections !== undefined) {
+      // Use saved selection state (regardless of availability)
+      return savedSelections.includes(model);
+    }
+    // First load: use defaults
+    return defaultModels.includes(model);
+  };
+
+  // Create container with buttons and checkboxes
+  const container = html`<div class="checkbox-group"></div>`;
+
+  // Add all/none buttons
+  const buttonRow = html`<div class="checkbox-group-buttons">
+    <button type="button" class="btn-all">All</button>
+    <button type="button" class="btn-none">None</button>
+  </div>`;
+  container.appendChild(buttonRow);
+
+  // Add checkboxes with color swatches
+  sortedModels.forEach(model => {
+    const isAvailable = availableModels.includes(model);
+    const isChecked = getInitialChecked(model);
+    const color = colorMap[model] || "#999999";
+
+    const label = html`<label style="${isAvailable ? '' : 'opacity: 0.4; cursor: not-allowed;'}">
+      <input type="checkbox"
+             name="model"
+             value="${model}"
+             ${isChecked ? 'checked' : ''}
+             ${isAvailable ? '' : 'disabled'}>
+      <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; margin-right: 4px; vertical-align: middle;"></span>
+      ${model}
+    </label>`;
+    container.appendChild(label);
+  });
+
+  // Update value helper - saves to window state, preserving unavailable selections
+  const updateValue = () => {
+    const currentlyChecked = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    container.value = currentlyChecked;
+    if (window._dashboardState) {
+      // Preserve selections for models not available on this date
+      const previousSelections = window._dashboardState.modelSelections || [];
+      const unavailableSelections = previousSelections.filter(m => !availableModels.includes(m));
+      window._dashboardState.modelSelections = [...currentlyChecked, ...unavailableSelections];
+    }
+    container.dispatchEvent(new Event('input'));
+  };
+
+  // Button handlers
+  container.querySelector('.btn-all').onclick = () => {
+    container.querySelectorAll('input:not(:disabled)').forEach(el => el.checked = true);
+    updateValue();
+  };
+  container.querySelector('.btn-none').onclick = () => {
+    container.querySelectorAll('input').forEach(el => el.checked = false);
+    updateValue();
+  };
+
+  // Initial value - don't overwrite saved state to preserve unavailable selections
+  container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+  container.oninput = updateValue;
+
+  return container;
+}
+```
+
+</div>
+
+<div class="control-group">
+
+**Clades**
+
+```{ojs}
+//| echo: false
+viewof selectedClades = {
+  if (!config || !selectedNowcastDate) return html`<div class="loading-message">Loading...</div>`;
+  const clades = config.clades_by_date[selectedNowcastDate] || [];
+
+  // Determine which clades should be checked
+  // Use saved selections if available, otherwise select all on first load
+  const savedSelections = window._dashboardState?.cladeSelections;
+
+  const getInitialChecked = (clade) => {
+    if (savedSelections === null || savedSelections === undefined) {
+      // First load: select all
+      return true;
+    }
+    // Use saved state - new clades default to unselected
+    return savedSelections.includes(clade);
+  };
+
+  // Create container with buttons and checkboxes
+  const container = html`<div class="checkbox-group"></div>`;
+
+  // Add all/none buttons
+  const buttonRow = html`<div class="checkbox-group-buttons">
+    <button type="button" class="btn-all">All</button>
+    <button type="button" class="btn-none">None</button>
+  </div>`;
+  container.appendChild(buttonRow);
+
+  // Add checkboxes for each clade
+  clades.forEach(clade => {
+    const isChecked = getInitialChecked(clade);
+    const label = html`<label>
+      <input type="checkbox" name="clade" value="${clade}" ${isChecked ? 'checked' : ''}>
+      ${config.clade_labels[clade] || clade}
+    </label>`;
+    container.appendChild(label);
+  });
+
+  // Update value helper - also saves to window state
+  const updateValue = () => {
+    container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    if (window._dashboardState) {
+      window._dashboardState.cladeSelections = container.value;
+    }
+    container.dispatchEvent(new Event('input'));
+  };
+
+  // Button handlers
+  container.querySelector('.btn-all').onclick = () => {
+    container.querySelectorAll('input').forEach(el => el.checked = true);
+    updateValue();
+  };
+  container.querySelector('.btn-none').onclick = () => {
+    container.querySelectorAll('input').forEach(el => el.checked = false);
+    updateValue();
+  };
+
+  // Initial value and save to state
+  container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+  if (window._dashboardState) {
+    window._dashboardState.cladeSelections = container.value;
+  }
+  container.oninput = updateValue;
+
+  return container;
+}
+```
+
+</div>
+
+</div>
+:::
+
+::: {.g-col-8}
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// Configuration and data loading
+// Always use GitHub raw URLs (remote data)
+baseUrl = "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub-dashboard/dashboard-data"
+
+// Cache buster for development - change this to force reload
+cacheBuster = `?v=${Date.now()}`
+
+config = {
+  try {
+    const response = await fetch(`${baseUrl}/dashboard-options.json${cacheBuster}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    // Ensure nowcast_dates is an array
+    if (typeof data.nowcast_dates === 'string') {
+      data.nowcast_dates = [data.nowcast_dates];
+    }
+    console.log("Config loaded:", data);
+    return data;
+  } catch (e) {
+    console.error("Config load error:", e);
+    // Return minimal config for development/testing
+    return {
+      locations: ["MA", "NY", "CA"],
+      location_names: {"MA": "Massachusetts", "NY": "New York", "CA": "California"},
+      nowcast_dates: ["2025-01-01"],
+      current_nowcast_date: "2025-01-01",
+      models: ["model1"],
+      initial_selected_models: ["model1"],
+      clades_by_date: {"2025-01-01": ["24A", "24B", "other"]},
+      clade_labels: {"24A": "24A", "24B": "24B", "other": "other"},
+      intervals: [50, 95],
+      default_interval: 95
+    };
+  }
+}
+
+// State for persisting selections across date changes (using window to avoid reactivity loops)
+{
+  if (!window._dashboardState) {
+    window._dashboardState = {
+      modelSelections: null,
+      cladeSelections: null,
+      dataVersionSelections: null,
+      intervalSettings: null
+    };
+  }
+}
+
+forecastData = {
+  // Check that we have valid string values
+  if (!selectedLocation || !selectedNowcastDate) return null;
+  if (typeof selectedLocation !== 'string' || typeof selectedNowcastDate !== 'string') return null;
+  try {
+    const url = `${baseUrl}/forecasts/${selectedLocation}_${selectedNowcastDate}.json`;
+    console.log("Fetching forecast:", url);
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log("Forecast fetch failed:", response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (e) {
+    console.log("Forecast fetch error:", e);
+    return null;
+  }
+}
+
+// Fetch target data for all selected versions
+targetDataByVersion = {
+  if (!selectedLocation || !selectedNowcastDate || !selectedDataVersions || selectedDataVersions.length === 0) return {};
+  if (typeof selectedLocation !== 'string' || typeof selectedNowcastDate !== 'string') return {};
+
+  const results = {};
+  for (const version of selectedDataVersions) {
+    try {
+      const url = `${baseUrl}/targets/${version}/${selectedLocation}_${selectedNowcastDate}.json`;
+      console.log("Fetching target:", url);
+      const response = await fetch(url);
+      if (response.ok) {
+        results[version] = await response.json();
+      } else {
+        console.log(`Target fetch failed for ${version}:`, response.status);
+      }
+    } catch (e) {
+      console.log(`Target fetch error for ${version}:`, e);
+    }
+  }
+  return results;
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+
+// Color palette - assign consistent colors based on model order in config
+colorPalette = [
+  "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
+  "#D55E00", "#CC79A7", "#999999", "#000000", "#B2DF8A",
+  "#FB9A99", "#CAB2D6", "#FDBF6F", "#1F78B4", "#33A02C"
+]
+
+// Create consistent model-to-color mapping based on config order
+modelColorMap = {
+  if (!config || !config.models) return {};
+  const map = {};
+  config.models.forEach((model, idx) => {
+    map[model] = colorPalette[idx % colorPalette.length];
+  });
+  return map;
+}
+
+// Get quantile column names based on interval level and type
+getQuantileCols = (level, type) => {
+  const prefix = type === "prediction" ? "multinomial_q" : "q";
+  const mapping = {
+    50: { lower: `${prefix}0.25`, upper: `${prefix}0.75` },
+    95: { lower: `${prefix}0.025`, upper: `${prefix}0.975` }
+  };
+  return mapping[level] || mapping[95];
+}
+
+// Build Plotly traces
+buildTraces = () => {
+  if (!forecastData || !selectedClades || selectedClades.length === 0) return [];
+  if (!selectedModels || selectedModels.length === 0) return [];
+
+  const traces = [];
+
+  // Only compute interval columns if intervals are shown
+  const shouldShowIntervals = showIntervals === true;
+  const level = intervalLevel || 95;
+  const type = effectiveIntervalType || "confidence";
+  const qCols = shouldShowIntervals ? getQuantileCols(level, type) : null;
+
+  console.log("Interval settings:", { shouldShowIntervals, level, type, qCols, predictionIntervalsAvailable });
+
+  // Add model predictions
+  selectedModels.forEach((model, modelIdx) => {
+    if (!forecastData.models || !forecastData.models[model]) return;
+
+    const modelData = forecastData.models[model];
+    const color = modelColorMap[model] || colorPalette[0];
+
+    selectedClades.forEach((clade, cladeIdx) => {
+      if (!modelData[clade]) return;
+
+      const cladeData = modelData[clade];
+      const xaxis = cladeIdx === 0 ? "x" : `x${cladeIdx + 1}`;
+      const yaxis = cladeIdx === 0 ? "y" : `y${cladeIdx + 1}`;
+
+      // Mean line - include interval bounds in tooltip if available
+      let meanCustomData = null;
+      let meanHoverTemplate = `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<extra></extra>`;
+
+      if (shouldShowIntervals && qCols) {
+        const lowerData = cladeData[qCols.lower];
+        const upperData = cladeData[qCols.upper];
+        if (lowerData && upperData) {
+          const intervalAbbrev = type === "prediction" ? "PI" : "CI";
+          // Pre-format interval string to handle NA values
+          meanCustomData = modelData.target_date.map((_, i) => {
+            const lower = lowerData[i];
+            const upper = upperData[i];
+            const hasLower = lower !== null && lower !== "NA" && !isNaN(lower);
+            const hasUpper = upper !== null && upper !== "NA" && !isNaN(upper);
+            if (hasLower && hasUpper) {
+              return `${intervalLevel}% ${intervalAbbrev}: [${lower.toFixed(2)}, ${upper.toFixed(2)}]`;
+            } else {
+              return `${intervalLevel}% ${intervalAbbrev}: NA`;
+            }
+          });
+          meanHoverTemplate = `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>%{customdata}<extra></extra>`;
+        }
+      }
+
+      traces.push({
+        x: modelData.target_date,
+        y: cladeData.mean,
+        type: "scatter",
+        mode: "lines",
+        name: model,
+        legendgroup: model,
+        showlegend: cladeIdx === 0,
+        line: { color: color, width: 2 },
+        customdata: meanCustomData,
+        xaxis: xaxis,
+        yaxis: yaxis,
+        hovertemplate: meanHoverTemplate
+      });
+
+      // Prediction interval ribbon (only if intervals are enabled and qCols exists)
+      if (shouldShowIntervals && qCols) {
+        const lowerData = cladeData[qCols.lower];
+        const upperData = cladeData[qCols.upper];
+        // Check if interval data exists and has valid (non-NA) values
+        const hasValidIntervals = lowerData && upperData &&
+          lowerData.some(v => v !== null && v !== "NA" && !isNaN(v));
+
+        if (hasValidIntervals) {
+        // Filter out NA values and get valid indices
+        const validIndices = lowerData.map((v, i) => v !== null && v !== "NA" && !isNaN(v) ? i : -1).filter(i => i >= 0);
+
+        // Group consecutive indices into segments (to avoid connecting across gaps)
+        const segments = [];
+        let currentSegment = [];
+        for (let i = 0; i < validIndices.length; i++) {
+          if (currentSegment.length === 0 || validIndices[i] === validIndices[i-1] + 1) {
+            currentSegment.push(validIndices[i]);
+          } else {
+            if (currentSegment.length > 0) segments.push(currentSegment);
+            currentSegment = [validIndices[i]];
+          }
+        }
+        if (currentSegment.length > 0) segments.push(currentSegment);
+
+        // Convert hex color to rgba with transparency
+        const hexToRgba = (hex, alpha) => {
+          const r = parseInt(hex.slice(1, 3), 16);
+          const g = parseInt(hex.slice(3, 5), 16);
+          const b = parseInt(hex.slice(5, 7), 16);
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
+
+        // Create separate ribbon trace for each continuous segment
+        segments.forEach(segmentIndices => {
+          const xFill = [...segmentIndices.map(i => modelData.target_date[i]),
+                         ...segmentIndices.map(i => modelData.target_date[i]).reverse()];
+          const yFill = [...segmentIndices.map(i => lowerData[i]),
+                         ...segmentIndices.map(i => upperData[i]).reverse()];
+
+          traces.push({
+            x: xFill,
+            y: yFill,
+            type: "scatter",
+            fill: "toself",
+            fillcolor: hexToRgba(color, 0.15),
+            line: { color: "transparent" },
+            showlegend: false,
+            legendgroup: model,
+            xaxis: xaxis,
+            yaxis: yaxis,
+            hoverinfo: "skip"
+          });
+        });
+        }
+      }
+    });
+  });
+
+  // Add target data points for each selected version
+  // Style: round-open = open circles (black border, white fill), latest = filled black circles
+  const versionStyles = {
+    "round-open": {
+      color: "white",
+      line: { color: "black", width: 1.5 },
+      symbol: "circle-open",
+      name: "Round open"
+    },
+    "latest": {
+      color: "black",
+      line: { width: 0 },
+      symbol: "circle",
+      name: "Last update"
+    }
+  };
+
+  if (targetDataByVersion && Object.keys(targetDataByVersion).length > 0) {
+    let isFirstVersion = true;
+    for (const [version, targetData] of Object.entries(targetDataByVersion)) {
+      if (!targetData || !targetData.data) continue;
+
+      const style = versionStyles[version] || versionStyles["latest"];
+      const legendGroup = `observed-${version}`;
+
+      selectedClades.forEach((clade, cladeIdx) => {
+        if (!targetData.data[clade]) return;
+
+        const cladeTargetData = targetData.data[clade];
+        const xaxis = cladeIdx === 0 ? "x" : `x${cladeIdx + 1}`;
+        const yaxis = cladeIdx === 0 ? "y" : `y${cladeIdx + 1}`;
+
+        // Scale marker size by total count
+        const sizes = cladeTargetData.total.map(t => Math.min(Math.max(Math.sqrt(t) * 1.5, 4), 20));
+
+        // Build customdata array with count and total for each point
+        const customData = cladeTargetData.count.map((c, i) => [c, cladeTargetData.total[i]]);
+
+        traces.push({
+          x: targetData.data.target_date,
+          y: cladeTargetData.proportion,
+          type: "scatter",
+          mode: "markers",
+          name: style.name,
+          legendgroup: legendGroup,
+          showlegend: cladeIdx === 0 && isFirstVersion,
+          marker: {
+            color: style.color,
+            line: style.line,
+            opacity: version === "round-open" ? 0.7 : 0.5,
+            size: sizes
+          },
+          customdata: customData,
+          xaxis: xaxis,
+          yaxis: yaxis,
+          hovertemplate: `${style.name}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
+        });
+      });
+      isFirstVersion = false;
+    }
+  }
+
+  return traces;
+}
+
+// Build Plotly layout with subplots
+buildLayout = () => {
+  if (!selectedClades || selectedClades.length === 0) {
+    return { title: "Select clades to display" };
+  }
+
+  const nClades = selectedClades.length;
+
+  // Adaptive grid: choose layout that best fills space
+  // For 1: 1x1, 2: 1x2, 3: 1x3, 4: 2x2, 5-6: 2x3, 7-9: 3x3
+  let cols, rows;
+  if (nClades === 1) { cols = 1; rows = 1; }
+  else if (nClades === 2) { cols = 2; rows = 1; }
+  else if (nClades <= 4) { cols = 2; rows = Math.ceil(nClades / 2); }
+  else if (nClades <= 6) { cols = 3; rows = 2; }
+  else { cols = 3; rows = Math.ceil(nClades / 3); }
+
+  // Fixed height based on viewport (approximately 70% of viewport height)
+  const fixedHeight = 600;
+
+  // Calculate width: window width minus sidebars (2 x g-col-2 = ~33%) minus padding
+  const chartWidth = Math.floor(window.innerWidth * 0.64);
+
+  const layout = {
+    width: chartWidth,
+    height: fixedHeight,
+    showlegend: false,
+    margin: { t: 30, b: 60, l: 50, r: 20 },
+    annotations: []
+  };
+
+  // Create subplot axes
+  selectedClades.forEach((clade, i) => {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const xKey = i === 0 ? "xaxis" : `xaxis${i + 1}`;
+    const yKey = i === 0 ? "yaxis" : `yaxis${i + 1}`;
+
+    const xDomain = [col / cols + 0.03, (col + 1) / cols - 0.03];
+    const yDomain = [1 - (row + 1) / rows + 0.08, 1 - row / rows - 0.08];
+
+    layout[xKey] = {
+      domain: xDomain,
+      anchor: i === 0 ? "y" : `y${i + 1}`,
+      type: "date"
+    };
+
+    layout[yKey] = {
+      domain: yDomain,
+      anchor: i === 0 ? "x" : `x${i + 1}`,
+      range: [0, 1],
+      title: col === 0 ? "Proportion" : ""
+    };
+
+    // Add clade label annotation - left-aligned above each subplot
+    layout.annotations.push({
+      text: `<b>${config.clade_labels[clade] || clade}</b>`,
+      showarrow: false,
+      x: xDomain[0],
+      y: yDomain[1] + 0.02,
+      xref: "paper",
+      yref: "paper",
+      xanchor: "left",
+      yanchor: "bottom",
+      font: { size: 12 }
+    });
+  });
+
+  // Add vertical line for nowcast date on each subplot
+  if (selectedNowcastDate && selectedClades && selectedClades.length > 0) {
+    layout.shapes = selectedClades.map((clade, i) => ({
+      type: "line",
+      x0: selectedNowcastDate,
+      x1: selectedNowcastDate,
+      xref: i === 0 ? "x" : `x${i + 1}`,
+      y0: 0,
+      y1: 1,
+      yref: i === 0 ? "y domain" : `y${i + 1} domain`,
+      line: { color: "gray", dash: "dash", width: 1 }
+    }));
+  }
+
+  return layout;
+}
+```
+
+```{ojs}
+//| echo: false
+
+// Check if target data has any counts
+hasTargetData = {
+  if (!targetDataByVersion || Object.keys(targetDataByVersion).length === 0) return false;
+  // Check if any version has any clade with non-zero total counts
+  return Object.values(targetDataByVersion).some(targetData => {
+    if (!targetData || !targetData.data) return false;
+    const clades = Object.keys(targetData.data).filter(k => k !== "target_date");
+    return clades.some(clade => {
+      const totals = targetData.data[clade]?.total;
+      return totals && totals.some(t => t > 0);
+    });
+  });
+}
+
+// Render the chart
+plotlyChart = {
+  const traces = buildTraces();
+  const layout = buildLayout();
+
+  if (traces.length === 0) {
+    return html`<div class="loading-message">
+      <p>No data available for the selected options.</p>
+      <p>Try selecting different models, clades, or check if the data branch exists.</p>
+    </div>`;
+  }
+
+  const container = document.createElement("div");
+  container.style.width = "100%";
+
+  // Add warning banner if no target data
+  if (!hasTargetData) {
+    const warning = document.createElement("div");
+    warning.style.cssText = "background-color: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 10px 15px; border-radius: 4px; margin-bottom: 10px; text-align: center; font-weight: 500;";
+    warning.textContent = "No target data available for this location and nowcast date";
+    container.appendChild(warning);
+  }
+
+  const chartDiv = document.createElement("div");
+  chartDiv.style.width = "100%";
+
+  Plotly.newPlot(chartDiv, traces, layout, {
+    responsive: false,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ["lasso2d", "select2d"]
+  });
+
+  // Handle window resize
+  const resizeHandler = () => {
+    const newWidth = Math.floor(window.innerWidth * 0.64);
+    Plotly.relayout(chartDiv, { width: newWidth });
+  };
+  window.addEventListener('resize', resizeHandler);
+
+  // Clean up listener when element is removed
+  const observer = new MutationObserver((mutations) => {
+    if (!document.contains(chartDiv)) {
+      window.removeEventListener('resize', resizeHandler);
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  container.appendChild(chartDiv);
+  return container;
+}
+```
+
+```{ojs}
+//| echo: false
+Plotly = require("https://cdn.plot.ly/plotly-2.27.0.min.js")
+```
+
+:::
+
+:::
+
+---
+
+**About this visualization:**
+
+- **Lines** show model predictions (mean values) for each clade
+- **Shaded ribbons** show uncertainty intervals: *Confidence intervals* reflect model uncertainty only, while *Prediction intervals* (available when "Round close" or "Last update" data is selected) also incorporate sampling uncertainty assuming multinomially distributed counts
+- **Open circles** show observed data available when the round opened; **filled circles** show the latest data update; dot size reflects the total number of sequences for that week
+- **Vertical dashed line** indicates the nowcast/submission date

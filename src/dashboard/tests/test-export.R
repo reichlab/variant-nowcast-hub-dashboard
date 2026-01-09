@@ -126,6 +126,11 @@ test_that("export_options_json creates valid dashboard config", {
       "2024-12-15" = c("24A", "24B", "24C")
     ),
     clade_labels = c("24A" = "24A (JN.1)", "24B" = "24B (JN.1.11)", "24C" = "24C"),
+    as_of_dates_by_nowcast = list(
+      "2024-12-01" = list(round_open = "2024-12-01", latest = "2024-12-20", round_closed = TRUE),
+      "2024-12-08" = list(round_open = "2024-12-08", latest = "2024-12-20", round_closed = TRUE),
+      "2024-12-15" = list(round_open = "2024-12-15", latest = "2024-12-20", round_closed = FALSE)
+    ),
     current_nowcast_date = "2024-12-15",
     output_dir = output_dir
   )

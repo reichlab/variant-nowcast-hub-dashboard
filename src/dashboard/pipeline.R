@@ -157,6 +157,15 @@ get_latest_as_of_date <- function(nowcast_date) {
   get_tuesday_on_or_before(target_date)
 }
 
+#' Get all model IDs from hub by scanning model-output directory
+#' @return Character vector of model IDs
+get_all_model_ids <- function() {
+  bucket <- arrow::s3_bucket("covid-variant-nowcast-hub")
+  model_dirs <- bucket$ls("model-output")
+  # Extract model ID from path like "model-output/Hub-ensemble"
+  gsub("^model-output/", "", model_dirs)
+}
+
 #' Fetch model predictions from hub
 #' @param nowcast_date The nowcast/reference date
 #' @param target_dates Vector of target dates to fetch (typically Saturdays)
@@ -295,12 +304,15 @@ run_pipeline <- function(
 
   message(paste("Processing", length(dates_to_process), "nowcast date(s)..."))
 
-  # Track all models for dashboard-options.json
-  all_models <- character(0)
-
-  # Pre-populate clades and as_of dates for ALL dates (not just processed ones)
-  # This ensures dashboard-options.json contains all historical dates
+  # Pre-populate metadata for ALL dates (not just processed ones)
+  # This ensures dashboard-options.json contains complete data
   message("Building metadata for all nowcast dates...")
+
+  # Get all models from hub directory structure
+  all_models <- get_all_model_ids()
+  message("  Found ", length(all_models), " models in hub")
+
+  # Build clades and as_of dates for all dates
   clades_by_date <- list()
   as_of_dates_by_nowcast <- list()
   current_date <- Sys.Date()
@@ -334,9 +346,6 @@ run_pipeline <- function(
         message("  No predictions found, skipping...")
         next
       }
-
-      # Track models
-      all_models <- unique(c(all_models, unique(predictions$model_id)))
 
       # Process predictions
       message("  Processing predictions...")

@@ -23,6 +23,18 @@ skip_if_no_hub_connection <- function() {
   })
 }
 
+#' Get a historical date that's known to have data
+#' Uses a date from the middle of available dates to avoid issues with
+#' the most recent date not having submissions yet
+#' @param hub_config Hub configuration
+#' @return A historical nowcast date string
+get_reliable_test_date <- function(hub_config) {
+  all_dates <- get_nowcast_dates(hub_config)
+  # Use a date from the middle of available dates
+  # This ensures the date has model submissions
+  all_dates[ceiling(length(all_dates) / 2)]
+}
+
 # =============================================================================
 # Test 1: Incremental run produces complete dashboard-options.json
 # =============================================================================
@@ -39,8 +51,8 @@ test_that("incremental run produces complete dashboard-options.json", {
   hub_config <- fetch_hub_config()
   all_dates <- get_nowcast_dates(hub_config)
 
-  # Use a date from the middle of the available dates
-  test_date <- all_dates[ceiling(length(all_dates) / 2)]
+  # Use a historical date that's known to have data
+  test_date <- get_reliable_test_date(hub_config)
 
   message("Running incremental pipeline for single date: ", test_date)
 
@@ -112,10 +124,9 @@ test_that("dashboard-options.json has all required fields with correct structure
   dir.create(test_output_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(test_output_dir, recursive = TRUE), add = TRUE)
 
-  # Get a valid date
+  # Get hub config and use a reliable historical date
   hub_config <- fetch_hub_config()
-  all_dates <- get_nowcast_dates(hub_config)
-  test_date <- tail(all_dates, 1)
+  test_date <- get_reliable_test_date(hub_config)
 
   # Run pipeline
   run_pipeline(
@@ -240,10 +251,9 @@ test_that("pipeline creates forecast and target files for processed date", {
   dir.create(test_output_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(test_output_dir, recursive = TRUE), add = TRUE)
 
-  # Get a valid date
+  # Get hub config and use a reliable historical date
   hub_config <- fetch_hub_config()
-  all_dates <- get_nowcast_dates(hub_config)
-  test_date <- tail(all_dates, 1)
+  test_date <- get_reliable_test_date(hub_config)
 
   # Run pipeline
   run_pipeline(
@@ -289,4 +299,3 @@ test_that("pipeline creates forecast and target files for processed date", {
                 info = "Forecast should have at least one model")
   }
 })
-

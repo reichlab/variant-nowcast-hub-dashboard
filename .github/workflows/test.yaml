@@ -1,0 +1,59 @@
+name: "Run Tests"
+
+# Run tests on push, PR, and manual trigger.
+# This ensures code changes are validated before merging.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/dashboard/**'
+      - '.github/workflows/test.yaml'
+
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/dashboard/**'
+      - '.github/workflows/test.yaml'
+
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3'
+          use-public-rspm: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Install R dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::here
+            any::dplyr
+            any::tidyr
+            any::lubridate
+            any::jsonlite
+            any::readr
+            any::tibble
+            any::arrow
+            any::testthat
+            github::hubverse-org/hubData
+            github::hubverse-org/hubUtils
+
+      - name: Run unit tests
+        run: |
+          testthat::test_dir("src/dashboard/tests", stop_on_failure = TRUE)
+        shell: Rscript {0}

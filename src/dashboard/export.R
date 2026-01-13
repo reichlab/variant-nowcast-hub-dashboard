@@ -248,6 +248,8 @@ export_options_json <- function(
 #' @param as_of_round_open Date string for round-open data
 #' @param as_of_latest Date string for latest data
 #' @param output_dir Output directory
+#' @param generate_forecasts If TRUE, export forecast files (default TRUE)
+#' @param generate_targets If TRUE, export target files (default TRUE)
 #' @return List with counts of exported files
 export_nowcast_date <- function(
     means,
@@ -258,7 +260,9 @@ export_nowcast_date <- function(
     nowcast_date,
     as_of_round_open,
     as_of_latest,
-    output_dir
+    output_dir,
+    generate_forecasts = TRUE,
+    generate_targets = TRUE
 ) {
   locations <- unique(means$location)
 
@@ -268,37 +272,41 @@ export_nowcast_date <- function(
 
   for (loc in locations) {
     # Export forecast
-    result <- export_forecast_json(
-      means = means,
-      quantiles = quantiles,
-      multinomial_pi = multinomial_pi,
-      location = loc,
-      nowcast_date = nowcast_date,
-      output_dir = output_dir
-    )
-    if (!is.null(result)) forecast_count <- forecast_count + 1
+    if (generate_forecasts) {
+      result <- export_forecast_json(
+        means = means,
+        quantiles = quantiles,
+        multinomial_pi = multinomial_pi,
+        location = loc,
+        nowcast_date = nowcast_date,
+        output_dir = output_dir
+      )
+      if (!is.null(result)) forecast_count <- forecast_count + 1
+    }
 
     # Export round-open targets
-    result <- export_target_json(
-      target_data = target_data_round_open,
-      location = loc,
-      nowcast_date = nowcast_date,
-      as_of_date = as_of_round_open,
-      version = "round-open",
-      output_dir = output_dir
-    )
-    if (!is.null(result)) target_round_open_count <- target_round_open_count + 1
+    if (generate_targets) {
+      result <- export_target_json(
+        target_data = target_data_round_open,
+        location = loc,
+        nowcast_date = nowcast_date,
+        as_of_date = as_of_round_open,
+        version = "round-open",
+        output_dir = output_dir
+      )
+      if (!is.null(result)) target_round_open_count <- target_round_open_count + 1
 
-    # Export latest targets
-    result <- export_target_json(
-      target_data = target_data_latest,
-      location = loc,
-      nowcast_date = nowcast_date,
-      as_of_date = as_of_latest,
-      version = "latest",
-      output_dir = output_dir
-    )
-    if (!is.null(result)) target_latest_count <- target_latest_count + 1
+      # Export latest targets
+      result <- export_target_json(
+        target_data = target_data_latest,
+        location = loc,
+        nowcast_date = nowcast_date,
+        as_of_date = as_of_latest,
+        version = "latest",
+        output_dir = output_dir
+      )
+      if (!is.null(result)) target_latest_count <- target_latest_count + 1
+    }
   }
 
   list(

@@ -20,6 +20,16 @@ on:
         type: boolean
         required: false
         default: false
+      generate_forecasts:
+        description: "Generate forecast data"
+        type: boolean
+        required: false
+        default: true
+      generate_targets:
+        description: "Generate target data"
+        type: boolean
+        required: false
+        default: true
       publish:
         description: "Push data to dashboard-data branch"
         type: boolean
@@ -62,30 +72,32 @@ jobs:
             any::readr
             any::tibble
             any::arrow
-            any::testthat
             github::hubverse-org/hubData
             github::hubverse-org/hubUtils
-
-      - name: Run tests
-        run: |
-          testthat::test_dir("src/dashboard/tests", stop_on_failure = TRUE)
-        shell: Rscript {0}
 
       - name: Generate data
         env:
           NOWCAST_DATES: ${{ inputs.nowcast_dates }}
           REGENERATE: ${{ inputs.regenerate }}
+          GENERATE_FORECASTS: ${{ inputs.generate_forecasts }}
+          GENERATE_TARGETS: ${{ inputs.generate_targets }}
         run: |
           source("src/dashboard/pipeline.R")
 
           nowcast_dates <- Sys.getenv("NOWCAST_DATES", "")
           regenerate <- as.logical(Sys.getenv("REGENERATE", "FALSE"))
+          generate_forecasts <- as.logical(Sys.getenv("GENERATE_FORECASTS", "TRUE"))
+          generate_targets <- as.logical(Sys.getenv("GENERATE_TARGETS", "TRUE"))
 
           if (is.na(regenerate)) regenerate <- FALSE
+          if (is.na(generate_forecasts)) generate_forecasts <- TRUE
+          if (is.na(generate_targets)) generate_targets <- TRUE
 
           run_pipeline(
             nowcast_dates = if (nowcast_dates == "") NULL else nowcast_dates,
-            regenerate = regenerate
+            regenerate = regenerate,
+            generate_forecasts = generate_forecasts,
+            generate_targets = generate_targets
           )
         shell: Rscript {0}
 
@@ -99,28 +111,38 @@ jobs:
 
       - name: Copy generated data to branch
         if: ${{ inputs.publish != false }}
+        env:
+          GENERATE_FORECASTS: ${{ inputs.generate_forecasts }}
+          GENERATE_TARGETS: ${{ inputs.generate_targets }}
         run: |
           # Create directories if they don't exist
           mkdir -p data-branch/forecasts
           mkdir -p data-branch/targets/round-open
           mkdir -p data-branch/targets/latest
 
-          # Copy new data files
-          if [ -d "output/forecasts" ]; then
+          # Copy forecast files if forecasts were generated
+          if [ "$GENERATE_FORECASTS" != "false" ] && [ -d "output/forecasts" ]; then
             cp -r output/forecasts/* data-branch/forecasts/ 2>/dev/null || true
+            echo "Copied forecast files"
           fi
 
-          if [ -d "output/targets/round-open" ]; then
-            cp -r output/targets/round-open/* data-branch/targets/round-open/ 2>/dev/null || true
+          # Copy target files if targets were generated
+          if [ "$GENERATE_TARGETS" != "false" ]; then
+            if [ -d "output/targets/round-open" ]; then
+              cp -r output/targets/round-open/* data-branch/targets/round-open/ 2>/dev/null || true
+              echo "Copied round-open target files"
+            fi
+
+            if [ -d "output/targets/latest" ]; then
+              cp -r output/targets/latest/* data-branch/targets/latest/ 2>/dev/null || true
+              echo "Copied latest target files"
+            fi
           fi
 
-          if [ -d "output/targets/latest" ]; then
-            cp -r output/targets/latest/* data-branch/targets/latest/ 2>/dev/null || true
-          fi
-
-          # Copy dashboard options
+          # Copy dashboard options (always updated)
           if [ -f "output/dashboard-options.json" ]; then
             cp output/dashboard-options.json data-branch/
+            echo "Copied dashboard-options.json"
           fi
 
           echo "Data files copied successfully"

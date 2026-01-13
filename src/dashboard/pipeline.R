@@ -270,21 +270,31 @@ get_target_dates <- function(nowcast_date, days_back = 31, days_forward = 10) {
 #' Run the dashboard data pipeline
 #' @param nowcast_dates Character vector of dates to process (NULL for latest)
 #' @param regenerate If TRUE, regenerate all historical data
+#' @param generate_forecasts If TRUE, generate forecast data (default TRUE)
+#' @param generate_targets If TRUE, generate target data (default TRUE)
 #' @param initial_selected_models Models to show by default in dashboard
 #' @param output_dir Base output directory
 #' @return Invisibly returns list of processed dates
 run_pipeline <- function(
     nowcast_dates = NULL,
     regenerate = FALSE,
+    generate_forecasts = TRUE,
+    generate_targets = TRUE,
     initial_selected_models = DEFAULT_INITIAL_MODELS,
     output_dir = OUTPUT_DIR
 ) {
   message("Starting dashboard data pipeline...")
+  message("  Generate forecasts: ", generate_forecasts)
+  message("  Generate targets: ", generate_targets)
 
   # Create output directories
-  dir.create(file.path(output_dir, "forecasts"), recursive = TRUE, showWarnings = FALSE)
-  dir.create(file.path(output_dir, "targets", "round-open"), recursive = TRUE, showWarnings = FALSE)
-  dir.create(file.path(output_dir, "targets", "latest"), recursive = TRUE, showWarnings = FALSE)
+  if (generate_forecasts) {
+    dir.create(file.path(output_dir, "forecasts"), recursive = TRUE, showWarnings = FALSE)
+  }
+  if (generate_targets) {
+    dir.create(file.path(output_dir, "targets", "round-open"), recursive = TRUE, showWarnings = FALSE)
+    dir.create(file.path(output_dir, "targets", "latest"), recursive = TRUE, showWarnings = FALSE)
+  }
 
   # Fetch hub configuration
   message("Fetching hub configuration...")
@@ -424,7 +434,9 @@ run_pipeline <- function(
         nowcast_date = nowcast_date,
         as_of_round_open = round_open_as_of,
         as_of_latest = latest_as_of,
-        output_dir = output_dir
+        output_dir = output_dir,
+        generate_forecasts = generate_forecasts,
+        generate_targets = generate_targets
       )
 
       message("  Exported: ", export_counts$forecasts, " forecasts, ",

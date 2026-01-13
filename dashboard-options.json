@@ -432,7 +432,7 @@
     },
     "2025-10-08": {
       "round_open": "2025-10-06",
-      "latest": "2026-01-06",
+      "latest": "2026-01-13",
       "round_closed": true
     },
     "2025-10-15": {
@@ -509,5 +509,5 @@
   "intervals": [50, 80, 95],
   "default_interval": 80,
   "current_nowcast_date": "2026-01-14",
-  "last_updated": "2026-01-13 15:24:16.100447"
+  "last_updated": "2026-01-13 15:53:29.241153"
 }

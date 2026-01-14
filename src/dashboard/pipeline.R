@@ -147,14 +147,75 @@ get_round_open_as_of_date <- function(nowcast_date) {
   get_tuesday_on_or_before(nowcast_date)
 }
 
+#' Fetch available as_of dates from the target data repository
+#' @return Character vector of available as_of dates (YYYY-MM-DD format), sorted descending
+fetch_available_as_of_dates <- function() {
+  tryCatch({
+    # Fetch directory listing from GitHub API
+    response <- jsonlite::fromJSON(TARGET_DATA_API_URL)
+
+    # Extract as_of dates from directory names (format: "as_of=YYYY-MM-DD")
+    dir_names <- response$name
+    as_of_dirs <- dir_names[grepl("^as_of=", dir_names)]
+
+    # Parse dates from directory names
+    dates <- gsub("^as_of=", "", as_of_dirs)
+
+    # Sort descending (most recent first)
+    sort(dates, decreasing = TRUE)
+  }, error = function(e) {
+    warning("Could not fetch available as_of dates from repository: ", e$message)
+    character(0)
+  })
+}
+
 #' Calculate the appropriate as_of date for "latest" target data
+#' Uses the most recent available as_of date from the source repository,
+#' constrained by the maximum weeks after nowcast date.
 #' @param nowcast_date The nowcast/reference date
-#' @return The as_of date to use for latest data (Tuesday closest to min of nowcast + 13 weeks, today)
-get_latest_as_of_date <- function(nowcast_date) {
+#' @param available_as_of_dates Optional vector of available dates (fetched if NULL)
+#' @return The as_of date to use for latest data
+get_latest_as_of_date <- function(nowcast_date, available_as_of_dates = NULL) {
   nowcast <- as.Date(nowcast_date)
   max_as_of <- nowcast + (TARGET_DATA_MAX_WEEKS * 7)
-  target_date <- min(max_as_of, Sys.Date())
-  get_tuesday_on_or_before(target_date)
+
+
+  # Fetch available dates if not provided
+  if (is.null(available_as_of_dates)) {
+    available_as_of_dates <- fetch_available_as_of_dates()
+  }
+
+  # If we couldn't fetch available dates, fall back to old behavior
+  if (length(available_as_of_dates) == 0) {
+    warning("Could not determine available as_of dates, using calculated date")
+    target_date <- min(max_as_of, Sys.Date())
+    return(get_tuesday_on_or_before(target_date))
+  }
+
+  # Convert to Date objects for comparison
+  available_dates <- as.Date(available_as_of_dates)
+
+  # Filter to dates that are:
+  # 1. Not after max_as_of (nowcast + 13 weeks)
+  # 2. Not after today
+  valid_dates <- available_dates[available_dates <= max_as_of & available_dates <= Sys.Date()]
+
+  if (length(valid_dates) == 0) {
+    warning("No valid as_of dates found for nowcast_date ", nowcast_date)
+    return(get_tuesday_on_or_before(min(max_as_of, Sys.Date())))
+  }
+
+  # Use the most recent valid date
+  latest_date <- max(valid_dates)
+
+  # Warn if the latest available date is more than a week old
+  days_old <- as.numeric(Sys.Date() - latest_date)
+  if (days_old > 7) {
+    warning("Latest available target data (as_of=", latest_date,
+            ") is ", days_old, " days old. Target data may be stale.")
+  }
+
+  as.character(latest_date)
 }
 
 #' Get all model IDs from hub by scanning model-output directory
@@ -322,6 +383,15 @@ run_pipeline <- function(
   all_models <- get_all_model_ids()
   message("  Found ", length(all_models), " models in hub")
 
+  # Fetch available as_of dates once (for efficiency)
+  message("  Fetching available target data dates...")
+  available_as_of_dates <- fetch_available_as_of_dates()
+  if (length(available_as_of_dates) > 0) {
+    message("  Found ", length(available_as_of_dates), " as_of dates (latest: ", available_as_of_dates[1], ")")
+  } else {
+    warning("  Could not fetch available as_of dates - will use calculated dates")
+  }
+
   # Build clades and as_of dates for all dates
   clades_by_date <- list()
   as_of_dates_by_nowcast <- list()
@@ -383,9 +453,9 @@ run_pipeline <- function(
       target_data_round_open_processed <- process_daily_target_data(target_data_round_open)
 
       # Fetch latest target data (for comparison)
-      # Use min(nowcast + 13 weeks, today) as the as_of date
-      # Include dates up to as_of date (beyond nowcast date) for retrospective evaluation
-      latest_as_of <- get_latest_as_of_date(nowcast_date)
+      # Use the most recent available as_of date from the source repository,
+      # constrained by nowcast + 13 weeks
+      latest_as_of <- get_latest_as_of_date(nowcast_date, available_as_of_dates)
       latest_max_date <- as.Date(latest_as_of)  # Include all available data up to as_of
       message("  Fetching target data (latest, as_of=", latest_as_of, ")...")
 

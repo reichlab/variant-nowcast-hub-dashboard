@@ -9,6 +9,7 @@ HUB_CONFIG_URL <- "https://raw.githubusercontent.com/reichlab/variant-nowcast-hu
 # Target Data Configuration
 TARGET_DATA_BUCKET <- "https://covid-clade-counts.s3.amazonaws.com"
 TARGET_DATA_HUB_URL <- "https://raw.githubusercontent.com/reichlab/variant-nowcast-hub/main/target-data/time-series"
+TARGET_DATA_API_URL <- "https://api.github.com/repos/reichlab/variant-nowcast-hub/contents/target-data/time-series"
 
 # Maximum weeks after nowcast date that target data is available
 TARGET_DATA_MAX_WEEKS <- 13

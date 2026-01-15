@@ -5,8 +5,8 @@ name: "Rebuild Dashboard Data"
 
 on:
   schedule:
-    # Run every Thursday at 10:00 UTC (after hub round closes)
-    - cron: "0 10 * * 4"
+    # Run every Thursday at 14:00 UTC / 9:00 AM ET (after hub round closes)
+    - cron: "0 14 * * 4"
 
   workflow_dispatch:
     inputs:
@@ -102,7 +102,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Checkout dashboard-data branch
-        if: ${{ inputs.publish != false }}
+        if: ${{ github.event_name == 'schedule' || inputs.publish != false }}
         uses: actions/checkout@v4
         with:
           ref: dashboard-data
@@ -110,7 +110,7 @@ jobs:
           fetch-depth: 0
 
       - name: Copy generated data to branch
-        if: ${{ inputs.publish != false }}
+        if: ${{ github.event_name == 'schedule' || inputs.publish != false }}
         env:
           GENERATE_FORECASTS: ${{ inputs.generate_forecasts }}
           GENERATE_TARGETS: ${{ inputs.generate_targets }}
@@ -148,7 +148,7 @@ jobs:
           echo "Data files copied successfully"
 
       - name: Commit and push data
-        if: ${{ inputs.publish != false }}
+        if: ${{ github.event_name == 'schedule' || inputs.publish != false }}
         run: |
           cd data-branch
           git config user.name "github-actions[bot]"

@@ -56,18 +56,39 @@ get_clades_for_date <- function(hub_config, nowcast_date) {
   unlist(hub_config$rounds$model_tasks[[round_idx]]$task_ids$clade$required)
 }
 
-#' Get clade labels (identity mapping - clade name is the label)
-#' @return Tibble with clade and clade_label columns
+#' Fetch clade display names from Nextstrain
+#' Maps clade codes to display names with Pango lineages (e.g., "24A" -> "24A (JN.1)")
+#' @return Named character vector mapping clade codes to display names
 fetch_clade_labels <- function() {
+  tryCatch({
+    # Fetch the YAML file content
+    lines <- readLines(CLADE_DISPLAY_NAMES_URL, warn = FALSE)
 
-  # For now, use identity mapping (clade = label)
+    # Parse simple YAML format: "clade: display_name"
+    # Filter out empty lines and comments
+    lines <- lines[nzchar(trimws(lines)) & !grepl("^#", lines)]
 
-  # Could be enhanced to fetch from Nextstrain API if needed
+    # Split each line on first colon
+    parsed <- lapply(lines, function(line) {
+      parts <- strsplit(line, ":\\s*", perl = TRUE)[[1]]
+      if (length(parts) >= 2) {
+        c(clade = trimws(parts[1]), label = trimws(paste(parts[-1], collapse = ":")))
+      } else {
+        NULL
+      }
+    })
 
-  tibble::tibble(
-    clade = character(0),
-    clade_label = character(0)
-  )
+    # Convert to named vector
+    parsed <- parsed[!sapply(parsed, is.null)]
+    labels <- sapply(parsed, function(x) x["label"])
+    names(labels) <- sapply(parsed, function(x) x["clade"])
+
+    message("  Fetched ", length(labels), " clade display names from Nextstrain")
+    labels
+  }, error = function(e) {
+    warning("Could not fetch clade display names: ", e$message, ". Using identity mapping.")
+    character(0)
+  })
 }
 
 #' Fetch target data (observed clade counts) from GitHub hub repo
@@ -523,9 +544,21 @@ run_pipeline <- function(
   # Generate dashboard-options.json
   message("\nGenerating dashboard-options.json...")
 
-  # Get clade labels for all clades used (identity mapping: clade = label)
+  # Fetch clade display names from Nextstrain (includes Pango lineages)
+  message("Fetching clade display names...")
+  nextstrain_labels <- fetch_clade_labels()
+
+  # Map clades used in dashboard to display names
+  # Falls back to clade code if not found in Nextstrain mapping
   all_clades <- unique(unlist(clades_by_date))
-  clade_labels_vec <- stats::setNames(all_clades, all_clades)
+  clade_labels_vec <- sapply(all_clades, function(clade) {
+    if (clade %in% names(nextstrain_labels)) {
+      nextstrain_labels[[clade]]
+    } else {
+      clade  # Use clade code as fallback (e.g., for "other")
+    }
+  })
+  names(clade_labels_vec) <- all_clades
 
   export_options_json(
     locations = US_LOCATIONS,

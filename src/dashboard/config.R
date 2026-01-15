@@ -14,8 +14,8 @@ TARGET_DATA_API_URL <- "https://api.github.com/repos/reichlab/variant-nowcast-hu
 # Maximum weeks after nowcast date that target data is available
 TARGET_DATA_MAX_WEEKS <- 13
 
-# Clade Labels
-CLADE_LABELS_URL <- "https://nextstrain.org/charon/getSourceInfo?prefix=nextstrain.org/ncov/gisaid/global/all-time"
+# Clade Labels - Nextstrain clade display names (includes Pango lineages)
+CLADE_DISPLAY_NAMES_URL <- "https://raw.githubusercontent.com/nextstrain/ncov/master/defaults/clade_display_names.yml"
 
 # Quantile Configuration
 # For 50%, 80%, 95% prediction intervals

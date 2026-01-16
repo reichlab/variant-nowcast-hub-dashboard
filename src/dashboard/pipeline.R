@@ -334,6 +334,7 @@ get_target_dates <- function(nowcast_date, days_back = 31, days_forward = 10) {
 #' @param generate_forecasts If TRUE, generate forecast data (default TRUE)
 #' @param generate_targets If TRUE, generate target data (default TRUE)
 #' @param initial_selected_models Models to show by default in dashboard
+#' @param locations Vector of location codes to process (NULL for all US locations)
 #' @param output_dir Base output directory
 #' @return Invisibly returns list of processed dates
 run_pipeline <- function(
@@ -342,11 +343,18 @@ run_pipeline <- function(
     generate_forecasts = TRUE,
     generate_targets = TRUE,
     initial_selected_models = DEFAULT_INITIAL_MODELS,
+    locations = NULL,
     output_dir = OUTPUT_DIR
 ) {
   message("Starting dashboard data pipeline...")
   message("  Generate forecasts: ", generate_forecasts)
   message("  Generate targets: ", generate_targets)
+
+  # Set default locations if not specified
+  if (is.null(locations)) {
+    locations <- US_LOCATIONS
+  }
+  message("  Processing ", length(locations), " location(s)")
 
   # Create output directories
   if (generate_forecasts) {
@@ -427,6 +435,11 @@ run_pipeline <- function(
         next
       }
 
+      # Filter predictions to requested locations
+      predictions <- predictions |>
+        dplyr::filter(location %in% locations)
+      message("  Filtered to ", length(unique(predictions$location)), " location(s)")
+
       # Process predictions
       message("  Processing predictions...")
       processed <- process_predictions(predictions)
@@ -450,6 +463,9 @@ run_pipeline <- function(
         message("    No round-open target data available, skipping...")
         next
       }
+      # Filter target data to requested locations
+      target_data_round_open <- target_data_round_open |>
+        dplyr::filter(location %in% locations)
       target_data_round_open_processed <- process_daily_target_data(target_data_round_open)
 
       # Fetch latest target data (for comparison)
@@ -478,6 +494,10 @@ run_pipeline <- function(
       if (is.null(target_data_latest) || nrow(target_data_latest) == 0) {
         message("    Could not fetch latest data, using round-open data")
         target_data_latest <- target_data_round_open
+      } else {
+        # Filter target data to requested locations
+        target_data_latest <- target_data_latest |>
+          dplyr::filter(location %in% locations)
       }
       target_data_latest_processed <- process_daily_target_data(target_data_latest)
 

@@ -2,6 +2,9 @@
 # =========================================
 # These tests verify the pipeline produces complete, valid output.
 # They make actual hub connections and are slower than unit tests.
+#
+# Performance optimization: Tests run with a subset of locations (2 instead of 52)
+# and share a single pipeline execution to minimize S3 connections and data processing.
 
 library(testthat)
 library(jsonlite)
@@ -10,7 +13,7 @@ library(jsonlite)
 source(here::here("src/dashboard/pipeline.R"))
 
 # =============================================================================
-# Helper: Skip if no hub connection
+# Helper Functions
 # =============================================================================
 
 skip_if_no_hub_connection <- function() {
@@ -35,11 +38,21 @@ get_reliable_test_date <- function(hub_config) {
   all_dates[ceiling(length(all_dates) / 2)]
 }
 
-# =============================================================================
-# Test 1: Incremental run produces complete dashboard-options.json
-# =============================================================================
+#' Get a small set of locations for testing
+#' Using 2 locations instead of 52 provides ~25x speedup for data processing
+#' @return Character vector of test location codes
+get_test_locations <- function() {
+  c("MA", "CA")
+}
 
-test_that("incremental run produces complete dashboard-options.json", {
+# =============================================================================
+# Consolidated Integration Test
+# =============================================================================
+# This test runs the pipeline ONCE with a limited set of locations, then
+# validates all assertions from the previous 3 separate tests. This reduces
+# integration test time from ~7 minutes to under 30 seconds.
+
+test_that("pipeline produces complete, valid output with correct structure", {
   skip_if_no_hub_connection()
 
   # Create temp output directory
@@ -53,17 +66,25 @@ test_that("incremental run produces complete dashboard-options.json", {
 
   # Use a historical date that's known to have data
   test_date <- get_reliable_test_date(hub_config)
+  test_locations <- get_test_locations()
 
-  message("Running incremental pipeline for single date: ", test_date)
+  message("Running pipeline for single date: ", test_date,
+          " with ", length(test_locations), " locations: ",
+          paste(test_locations, collapse = ", "))
 
-  # Run pipeline for just one date (incremental mode)
+  # Run pipeline once with limited locations for speed
   run_pipeline(
     nowcast_dates = test_date,
     regenerate = FALSE,
+    locations = test_locations,
     output_dir = test_output_dir
   )
 
-  # Load the generated options file
+  # =========================================================================
+  # Test Group 1: dashboard-options.json completeness
+  # (from "incremental run produces complete dashboard-options.json")
+  # =========================================================================
+
   options_path <- file.path(test_output_dir, "dashboard-options.json")
   expect_true(file.exists(options_path),
               info = "dashboard-options.json should be created")
@@ -71,7 +92,6 @@ test_that("incremental run produces complete dashboard-options.json", {
   options <- jsonlite::fromJSON(options_path)
 
   # Test: Should have ALL nowcast dates, not just the processed one
-
   expect_true(
     length(options$nowcast_dates) > 1,
     info = paste("Should have all nowcast dates, got:", length(options$nowcast_dates))
@@ -110,32 +130,11 @@ test_that("incremental run produces complete dashboard-options.json", {
     max(options$nowcast_dates),
     info = "current_nowcast_date should be the most recent date"
   )
-})
 
-# =============================================================================
-# Test 2: Schema validation - dashboard-options.json structure
-# =============================================================================
-
-test_that("dashboard-options.json has all required fields with correct structure", {
-  skip_if_no_hub_connection()
-
-  # Create temp output directory
-  test_output_dir <- file.path(tempdir(), paste0("schema_test_", Sys.getpid()))
-  dir.create(test_output_dir, recursive = TRUE, showWarnings = FALSE)
-  on.exit(unlink(test_output_dir, recursive = TRUE), add = TRUE)
-
-  # Get hub config and use a reliable historical date
-  hub_config <- fetch_hub_config()
-  test_date <- get_reliable_test_date(hub_config)
-
-  # Run pipeline
-  run_pipeline(
-    nowcast_dates = test_date,
-    regenerate = FALSE,
-    output_dir = test_output_dir
-  )
-
-  options <- jsonlite::fromJSON(file.path(test_output_dir, "dashboard-options.json"))
+  # =========================================================================
+  # Test Group 2: dashboard-options.json schema validation
+  # (from "dashboard-options.json has all required fields with correct structure")
+  # =========================================================================
 
   # Required top-level fields
   required_fields <- c(
@@ -163,7 +162,7 @@ test_that("dashboard-options.json has all required fields with correct structure
   # Validate locations
   expect_true(length(options$locations) >= 50,
               info = "Should have at least 50 US locations")
-  expect_true("US" %in% options$locations || "CA" %in% options$locations,
+  expect_true("CA" %in% options$locations,
               info = "Should include expected locations")
 
   # Validate location_names is a named list matching locations
@@ -237,30 +236,11 @@ test_that("dashboard-options.json has all required fields with correct structure
   # Validate last_updated is a timestamp
   expect_true(nchar(options$last_updated) > 10,
               info = "last_updated should be a timestamp string")
-})
 
-# =============================================================================
-# Test 3: Forecast and target files are created for processed date
-# =============================================================================
-
-test_that("pipeline creates forecast and target files for processed date", {
-  skip_if_no_hub_connection()
-
-  # Create temp output directory
-  test_output_dir <- file.path(tempdir(), paste0("files_test_", Sys.getpid()))
-  dir.create(test_output_dir, recursive = TRUE, showWarnings = FALSE)
-  on.exit(unlink(test_output_dir, recursive = TRUE), add = TRUE)
-
-  # Get hub config and use a reliable historical date
-  hub_config <- fetch_hub_config()
-  test_date <- get_reliable_test_date(hub_config)
-
-  # Run pipeline
-  run_pipeline(
-    nowcast_dates = test_date,
-    regenerate = FALSE,
-    output_dir = test_output_dir
-  )
+  # =========================================================================
+  # Test Group 3: Forecast and target file creation
+  # (from "pipeline creates forecast and target files for processed date")
+  # =========================================================================
 
   # Check forecast files exist
   forecast_dir <- file.path(test_output_dir, "forecasts")
@@ -270,11 +250,17 @@ test_that("pipeline creates forecast and target files for processed date", {
   expect_true(length(forecast_files) > 0,
               info = "Should have at least one forecast file")
 
-  # Check at least one forecast file matches the test date
-  date_pattern <- gsub("-", "-", test_date)  # Escape for regex if needed
-  matching_files <- grep(test_date, forecast_files, value = TRUE)
-  expect_true(length(matching_files) > 0,
-              info = paste("Should have forecast files for date:", test_date))
+  # Check forecast files were created for test locations
+  for (loc in test_locations) {
+    expected_file <- paste0(loc, "_", test_date, ".json")
+    expect_true(expected_file %in% forecast_files,
+                info = paste("Should have forecast file for location:", loc))
+  }
+
+  # Check we only created files for test locations (not all 52)
+  expect_equal(length(forecast_files), length(test_locations),
+               info = paste("Should have exactly", length(test_locations),
+                            "forecast files (one per test location)"))
 
   # Check target files exist
   target_round_open_dir <- file.path(test_output_dir, "targets", "round-open")
@@ -285,9 +271,19 @@ test_that("pipeline creates forecast and target files for processed date", {
   expect_true(dir.exists(target_latest_dir),
               info = "targets/latest/ directory should exist")
 
+  # Check target files were created for test locations
+  round_open_files <- list.files(target_round_open_dir, pattern = "\\.json$")
+  latest_files <- list.files(target_latest_dir, pattern = "\\.json$")
+
+  expect_true(length(round_open_files) > 0,
+              info = "Should have at least one round-open target file")
+  expect_true(length(latest_files) > 0,
+              info = "Should have at least one latest target file")
+
   # Validate a forecast file structure
-  if (length(matching_files) > 0) {
-    forecast <- jsonlite::fromJSON(file.path(forecast_dir, matching_files[1]))
+  sample_forecast_file <- paste0(test_locations[1], "_", test_date, ".json")
+  if (sample_forecast_file %in% forecast_files) {
+    forecast <- jsonlite::fromJSON(file.path(forecast_dir, sample_forecast_file))
 
     expect_true("location" %in% names(forecast),
                 info = "Forecast should have location field")

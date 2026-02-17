@@ -540,6 +540,64 @@ run_pipeline <- function(
     })
   }
 
+  # Update latest target data for recent nowcast dates (last 13 weeks).
+  # The main loop above only processes new dates, but "latest" target data
+  # improves over time as more sequences are reported. This step refreshes
+  # the latest target files for all still-open rounds.
+  if (generate_targets) {
+    recent_dates <- all_nowcast_dates[!sapply(all_nowcast_dates, is_round_closed)]
+    dates_needing_latest_update <- setdiff(recent_dates, dates_to_process)
+
+    if (length(dates_needing_latest_update) > 0) {
+      message("\nUpdating latest target data for ",
+              length(dates_needing_latest_update), " recent nowcast date(s)...")
+
+      for (nowcast_date in dates_needing_latest_update) {
+        tryCatch({
+          predicted_clades <- get_clades_for_date(hub_config, nowcast_date)
+          latest_as_of <- get_latest_as_of_date(nowcast_date, available_as_of_dates)
+          min_date <- as.Date(nowcast_date) - 96
+          latest_max_date <- as.Date(latest_as_of)
+
+          message("  ", nowcast_date, " (as_of=", latest_as_of, ")")
+
+          target_data_latest <- fetch_target_data(
+            as_of_date = latest_as_of,
+            nowcast_date = nowcast_date,
+            predicted_clades = predicted_clades,
+            min_date = min_date,
+            max_date = latest_max_date
+          )
+
+          if (!is.null(target_data_latest) && nrow(target_data_latest) > 0) {
+            target_data_latest <- target_data_latest |>
+              dplyr::filter(location %in% locations)
+            target_data_latest_processed <- process_daily_target_data(target_data_latest)
+
+            for (loc in unique(target_data_latest_processed$location)) {
+              export_target_json(
+                target_data = target_data_latest_processed,
+                location = loc,
+                nowcast_date = nowcast_date,
+                as_of_date = latest_as_of,
+                version = "latest",
+                output_dir = output_dir
+              )
+            }
+
+            as_of_dates_by_nowcast[[nowcast_date]]$latest <- as.character(latest_as_of)
+            message("    Updated ", length(unique(target_data_latest_processed$location)),
+                    " location(s)")
+          } else {
+            message("    No latest target data available, skipping")
+          }
+        }, error = function(e) {
+          warning(paste("Error updating latest targets for", nowcast_date, ":", e$message))
+        })
+      }
+    }
+  }
+
   # Generate dashboard-options.json
   message("\nGenerating dashboard-options.json...")
 

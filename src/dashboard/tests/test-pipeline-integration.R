@@ -257,10 +257,14 @@ test_that("pipeline produces complete, valid output with correct structure", {
                 info = paste("Should have forecast file for location:", loc))
   }
 
-  # Check we only created files for test locations (not all 52)
-  expect_equal(length(forecast_files), length(test_locations),
-               info = paste("Should have exactly", length(test_locations),
-                            "forecast files (one per test location)"))
+  # Check we created files for test locations (not all 52).
+  # The refresh loop also regenerates forecasts for recent dates (~13 weeks),
+  # so total files = test date + recent dates, all limited to test locations.
+  expect_true(length(forecast_files) >= length(test_locations),
+              info = paste("Should have at least", length(test_locations),
+                           "forecast files (for test locations)"))
+  expect_true(all(grepl(paste(test_locations, collapse = "|"), forecast_files)),
+              info = "All forecast files should be for test locations only")
 
   # Check target files exist
   target_round_open_dir <- file.path(test_output_dir, "targets", "round-open")

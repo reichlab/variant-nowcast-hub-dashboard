@@ -135,9 +135,10 @@ get_monday_before <- function(date) {
 
 #' Check if a round has closed (13 weeks have passed since nowcast date)
 #' @param nowcast_date The nowcast date
+#' @param reference_date The date to compare against (defaults to today)
 #' @return TRUE if round has closed
-is_round_closed <- function(nowcast_date) {
-  as.Date(nowcast_date) + (TARGET_DATA_MAX_WEEKS * 7) <= Sys.Date()
+is_round_closed <- function(nowcast_date, reference_date = Sys.Date()) {
+  as.Date(nowcast_date) + (TARGET_DATA_MAX_WEEKS * 7) <= as.Date(reference_date)
 }
 
 #' Calculate the appropriate as_of date for "round-open" target data
@@ -175,8 +176,10 @@ fetch_available_as_of_dates <- function() {
 #' @param nowcast_date The nowcast/reference date
 #' @param available_as_of_dates Optional vector of available dates (fetched if NULL)
 #' @return The as_of date to use for latest data
-get_latest_as_of_date <- function(nowcast_date, available_as_of_dates = NULL) {
+get_latest_as_of_date <- function(nowcast_date, available_as_of_dates = NULL,
+                                   reference_date = Sys.Date()) {
   nowcast <- as.Date(nowcast_date)
+  reference_date <- as.Date(reference_date)
   max_as_of <- nowcast + (TARGET_DATA_MAX_WEEKS * 7)
 
 
@@ -188,7 +191,7 @@ get_latest_as_of_date <- function(nowcast_date, available_as_of_dates = NULL) {
   # If we couldn't fetch available dates, fall back to old behavior
   if (length(available_as_of_dates) == 0) {
     warning("Could not determine available as_of dates, using calculated date")
-    target_date <- min(max_as_of, Sys.Date())
+    target_date <- min(max_as_of, reference_date)
     return(get_tuesday_on_or_before(target_date))
   }
 
@@ -197,19 +200,19 @@ get_latest_as_of_date <- function(nowcast_date, available_as_of_dates = NULL) {
 
   # Filter to dates that are:
   # 1. Not after max_as_of (nowcast + 13 weeks)
-  # 2. Not after today
-  valid_dates <- available_dates[available_dates <= max_as_of & available_dates <= Sys.Date()]
+  # 2. Not after reference_date
+  valid_dates <- available_dates[available_dates <= max_as_of & available_dates <= reference_date]
 
   if (length(valid_dates) == 0) {
     warning("No valid as_of dates found for nowcast_date ", nowcast_date)
-    return(get_tuesday_on_or_before(min(max_as_of, Sys.Date())))
+    return(get_tuesday_on_or_before(min(max_as_of, reference_date)))
   }
 
   # Use the most recent valid date
   latest_date <- max(valid_dates)
 
   # Warn if the latest available date is more than a week old
-  days_old <- as.numeric(Sys.Date() - latest_date)
+  days_old <- as.numeric(reference_date - latest_date)
   if (days_old > 7) {
     warning("Latest available target data (as_of=", latest_date,
             ") is ", days_old, " days old. Target data may be stale.")
@@ -381,6 +384,11 @@ run_pipeline <- function(
     dates_to_process <- trimws(strsplit(nowcast_dates, ",")[[1]])
   }
 
+  # The refresh loop should operate relative to the latest requested nowcast date,
+  # not today. This ensures that when rerunning the workflow for a past date
+  # (e.g., 2026-01-14), the refresh targets the 13 weeks before that date.
+  refresh_reference_date <- as.Date(max(dates_to_process))
+
   message(paste("Processing", length(dates_to_process), "nowcast date(s)..."))
 
   # Pre-populate metadata for ALL dates (not just processed ones)
@@ -551,7 +559,9 @@ run_pipeline <- function(
   # depend on those totals. This step refreshes latest targets, recomputes PIs,
   # and re-exports forecast files for all still-open rounds (last ~13 weeks).
   if (generate_targets || generate_forecasts) {
-    recent_dates <- all_nowcast_dates[!sapply(all_nowcast_dates, is_round_closed)]
+    recent_dates <- all_nowcast_dates[
+      !sapply(all_nowcast_dates, is_round_closed, reference_date = refresh_reference_date)
+    ]
     dates_needing_update <- setdiff(recent_dates, dates_to_process)
 
     if (length(dates_needing_update) > 0) {
@@ -561,7 +571,8 @@ run_pipeline <- function(
       for (nowcast_date in dates_needing_update) {
         tryCatch({
           predicted_clades <- get_clades_for_date(hub_config, nowcast_date)
-          latest_as_of <- get_latest_as_of_date(nowcast_date, available_as_of_dates)
+          latest_as_of <- get_latest_as_of_date(nowcast_date, available_as_of_dates,
+                                                   reference_date = refresh_reference_date)
           min_date <- as.Date(nowcast_date) - 96
           latest_max_date <- as.Date(latest_as_of)
 

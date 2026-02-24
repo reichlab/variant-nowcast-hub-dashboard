@@ -407,10 +407,15 @@ run_pipeline <- function(
 
   for (date in all_nowcast_dates) {
     clades_by_date[[date]] <- get_clades_for_date(hub_config, date)
+    closed <- is_round_closed(date)
     as_of_dates_by_nowcast[[date]] <- list(
       round_open = as.character(get_monday_before(date)),
-      latest = as.character(current_date),  # Will be updated for processed dates
-      round_closed = is_round_closed(date)
+      latest = if (closed) {
+        as.character(as.Date(date) + TARGET_DATA_MAX_WEEKS * 7)
+      } else {
+        as.character(current_date)  # Will be updated for processed dates
+      },
+      round_closed = closed
     )
   }
 

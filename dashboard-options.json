@@ -466,87 +466,87 @@
     },
     "2025-11-12": {
       "round_open": "2025-11-10",
-      "latest": "2026-02-03",
+      "latest": "2026-02-11",
       "round_closed": true
     },
     "2025-11-19": {
       "round_open": "2025-11-17",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": true
     },
     "2025-11-26": {
       "round_open": "2025-11-24",
-      "latest": "2026-02-03",
-      "round_closed": false
+      "latest": "2026-02-10",
+      "round_closed": true
     },
     "2025-12-03": {
       "round_open": "2025-12-01",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2025-12-10": {
       "round_open": "2025-12-08",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2025-12-17": {
       "round_open": "2025-12-15",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2025-12-24": {
       "round_open": "2025-12-22",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2025-12-31": {
       "round_open": "2025-12-29",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2026-01-07": {
       "round_open": "2026-01-05",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2026-01-14": {
       "round_open": "2026-01-12",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2026-01-21": {
       "round_open": "2026-01-19",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2026-01-28": {
       "round_open": "2026-01-26",
-      "latest": "2026-02-03",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2026-02-04": {
       "round_open": "2026-02-02",
-      "latest": "2026-02-17",
+      "latest": "2026-02-10",
       "round_closed": false
     },
     "2026-02-11": {
       "round_open": "2026-02-09",
-      "latest": "2026-02-24",
+      "latest": "2026-02-17",
       "round_closed": false
     },
     "2026-02-18": {
       "round_open": "2026-02-16",
-      "latest": "2026-02-24",
+      "latest": "2026-02-25",
       "round_closed": false
     },
     "2026-02-25": {
       "round_open": "2026-02-23",
-      "latest": "2026-02-24",
+      "latest": "2026-02-25",
       "round_closed": false
     }
   },
   "intervals": [50, 80, 95],
   "default_interval": 80,
   "current_nowcast_date": "2026-02-25",
-  "last_updated": "2026-02-25 00:05:54.520437"
+  "last_updated": "2026-02-25 00:59:41.909933"
 }

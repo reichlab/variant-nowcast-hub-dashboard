@@ -481,72 +481,72 @@
     },
     "2025-12-03": {
       "round_open": "2025-12-01",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2025-12-10": {
       "round_open": "2025-12-08",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2025-12-17": {
       "round_open": "2025-12-15",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2025-12-24": {
       "round_open": "2025-12-22",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2025-12-31": {
       "round_open": "2025-12-29",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-01-07": {
       "round_open": "2026-01-05",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-01-14": {
       "round_open": "2026-01-12",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-01-21": {
       "round_open": "2026-01-19",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-01-28": {
       "round_open": "2026-01-26",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-02-04": {
       "round_open": "2026-02-02",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-02-11": {
       "round_open": "2026-02-09",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-02-18": {
       "round_open": "2026-02-16",
-      "latest": "2026-02-17",
+      "latest": "2026-02-24",
       "round_closed": false
     },
     "2026-02-25": {
       "round_open": "2026-02-23",
-      "latest": "2026-02-26",
+      "latest": "2026-02-24",
       "round_closed": false
     }
   },
   "intervals": [50, 80, 95],
   "default_interval": 80,
   "current_nowcast_date": "2026-02-25",
-  "last_updated": "2026-02-26 15:11:14.246397"
+  "last_updated": "2026-02-26 17:13:26.296771"
 }

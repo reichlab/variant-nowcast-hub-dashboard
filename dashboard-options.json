@@ -476,7 +476,7 @@
     },
     "2025-11-26": {
       "round_open": "2025-11-24",
-      "latest": "2026-02-17",
+      "latest": "2026-02-25",
       "round_closed": true
     },
     "2025-12-03": {
@@ -541,12 +541,12 @@
     },
     "2026-02-25": {
       "round_open": "2026-02-23",
-      "latest": "2026-02-25",
+      "latest": "2026-02-26",
       "round_closed": false
     }
   },
   "intervals": [50, 80, 95],
   "default_interval": 80,
   "current_nowcast_date": "2026-02-25",
-  "last_updated": "2026-02-25 01:56:26.062902"
+  "last_updated": "2026-02-26 15:11:14.246397"
 }

@@ -1,0 +1,81 @@
+{
+  "targets": [
+    {
+      "target_id": "clade_prop",
+      "metrics": [
+        "energy_score",
+        "brier_score_point",
+        "brier_score_dist",
+        "interval_coverage_50",
+        "interval_coverage_90"
+      ],
+      "disaggregate_by": [
+        "location",
+        "nowcast_date",
+        "horizon",
+        "target_date"
+      ]
+    }
+  ],
+  "eval_sets": [
+    {
+      "eval_set_name": "Overall"
+    }
+  ],
+  "task_id_text": {
+    "location": {
+      "AL": "Alabama",
+      "AK": "Alaska",
+      "AZ": "Arizona",
+      "AR": "Arkansas",
+      "CA": "California",
+      "CO": "Colorado",
+      "CT": "Connecticut",
+      "DE": "Delaware",
+      "DC": "District of Columbia",
+      "FL": "Florida",
+      "GA": "Georgia",
+      "HI": "Hawaii",
+      "ID": "Idaho",
+      "IL": "Illinois",
+      "IN": "Indiana",
+      "IA": "Iowa",
+      "KS": "Kansas",
+      "KY": "Kentucky",
+      "LA": "Louisiana",
+      "ME": "Maine",
+      "MD": "Maryland",
+      "MA": "Massachusetts",
+      "MI": "Michigan",
+      "MN": "Minnesota",
+      "MS": "Mississippi",
+      "MO": "Missouri",
+      "MT": "Montana",
+      "NE": "Nebraska",
+      "NV": "Nevada",
+      "NH": "New Hampshire",
+      "NJ": "New Jersey",
+      "NM": "New Mexico",
+      "NY": "New York",
+      "NC": "North Carolina",
+      "ND": "North Dakota",
+      "OH": "Ohio",
+      "OK": "Oklahoma",
+      "OR": "Oregon",
+      "PA": "Pennsylvania",
+      "PR": "Puerto Rico",
+      "RI": "Rhode Island",
+      "SC": "South Carolina",
+      "SD": "South Dakota",
+      "TN": "Tennessee",
+      "TX": "Texas",
+      "UT": "Utah",
+      "VT": "Vermont",
+      "VA": "Virginia",
+      "WA": "Washington",
+      "WV": "West Virginia",
+      "WI": "Wisconsin",
+      "WY": "Wyoming"
+    }
+  }
+}

@@ -56,18 +56,22 @@ get_clades_for_date <- function(hub_config, nowcast_date) {
   unlist(hub_config$rounds$model_tasks[[round_idx]]$task_ids$clade$required)
 }
 
-#' Get clade labels (identity mapping - clade name is the label)
+#' Fetch clade display labels from Nextstrain crosswalk
+#' Maps clade IDs (e.g. "24A") to display strings with Pango lineage (e.g. "24A (JN.1)").
+#' Falls back to an empty tibble (identity mapping) if the URL is unreachable.
 #' @return Tibble with clade and clade_label columns
 fetch_clade_labels <- function() {
-
-  # For now, use identity mapping (clade = label)
-
-  # Could be enhanced to fetch from Nextstrain API if needed
-
-  tibble::tibble(
-    clade = character(0),
-    clade_label = character(0)
-  )
+  tryCatch({
+    raw <- yaml::read_yaml(CLADE_LABELS_URL)
+    tibble::tibble(
+      clade       = names(raw),
+      clade_label = unlist(raw, use.names = FALSE)
+    )
+  }, error = function(e) {
+    warning("Could not fetch clade labels from Nextstrain: ", e$message,
+            ". Falling back to identity mapping.")
+    tibble::tibble(clade = character(0), clade_label = character(0))
+  })
 }
 
 #' Fetch target data (observed clade counts) from GitHub hub repo
@@ -658,9 +662,15 @@ run_pipeline <- function(
   # Generate dashboard-options.json
   message("\nGenerating dashboard-options.json...")
 
-  # Get clade labels for all clades used (identity mapping: clade = label)
+  # Get clade labels, enriched with Pango lineage names where available.
+  # Clades not in the Nextstrain crosswalk (e.g. "other") fall back to identity.
   all_clades <- unique(unlist(clades_by_date))
-  clade_labels_vec <- stats::setNames(all_clades, all_clades)
+  clade_label_df <- fetch_clade_labels()
+  label_lookup <- stats::setNames(clade_label_df$clade_label, clade_label_df$clade)
+  clade_labels_vec <- stats::setNames(
+    ifelse(all_clades %in% names(label_lookup), label_lookup[all_clades], all_clades),
+    all_clades
+  )
 
   export_options_json(
     locations = US_LOCATIONS,

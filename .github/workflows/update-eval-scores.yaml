@@ -5,8 +5,9 @@ name: "Update Evaluation Scores"
 
 on:
   schedule:
-    - cron: "0 16 * 3-11 5"   # Noon EDT (UTC-4), Mar–Nov
-    - cron: "0 17 * 11-3 5"   # Noon EST (UTC-5), Nov–Mar
+    - cron: "0 16 * 3-11 5"    # Noon EDT (UTC-4), Mar–Nov
+    - cron: "0 17 * 1-3 5"     # Noon EST (UTC-5), Jan–Mar
+    - cron: "0 17 * 11,12 5"   # Noon EST (UTC-5), Nov–Dec
   workflow_dispatch:
     inputs:
       publish:

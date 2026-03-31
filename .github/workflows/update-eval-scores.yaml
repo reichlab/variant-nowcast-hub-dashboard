@@ -61,7 +61,8 @@ jobs:
           cp -r predevals-branch/scores/. scores/
 
       - name: Run scoring script 🧮
-        run: Rscript src/updating_dashboard_scores.R
+        run: Rscript updating_dashboard_scores.R
+        working-directory: src
 
       - name: Copy updated scores to branch 📤
         run: |

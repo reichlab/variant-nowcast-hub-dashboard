@@ -1,0 +1,82 @@
+name: "Update Evaluation Scores"
+
+# Fetch scores from S3, compute aggregated metrics, and commit CSVs
+# to the predevals/data branch for the eval dashboard page.
+
+on:
+  schedule:
+    - cron: "0 16 * 3-11 5"   # Noon EDT (UTC-4), Mar–Nov
+    - cron: "0 17 * 11-3 5"   # Noon EST (UTC-5), Nov–Mar
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push data to predevals/data branch"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-scores:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main branch 🛎️
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup R 📦
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3'
+          use-public-rspm: true
+
+      - name: Install system dependencies 🔧
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Install R dependencies 📚
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::tidyverse
+            any::arrow
+            any::tidyr
+
+      - name: Checkout predevals/data branch 📂
+        uses: actions/checkout@v4
+        with:
+          ref: predevals/data
+          path: predevals-branch
+          fetch-depth: 0
+
+      - name: Stage existing scores for script 📋
+        run: |
+          mkdir -p scores
+          cp -r predevals-branch/scores/. scores/
+
+      - name: Run scoring script 🧮
+        run: Rscript src/updating_dashboard_scores.R
+
+      - name: Copy updated scores to branch 📤
+        run: |
+          cp -r scores/. predevals-branch/scores/
+
+      - name: Commit and push to predevals/data 🚀
+        if: ${{ github.event_name == 'schedule' || inputs.publish != false }}
+        run: |
+          cd predevals-branch
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update eval scores $(date +%Y-%m-%d)"
+            git push
+            echo "Scores pushed to predevals/data branch"
+          fi

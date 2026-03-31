@@ -844,11 +844,16 @@ buildTraces = () => {
         const xaxis = cladeIdx === 0 ? "x" : `x${cladeIdx + 1}`;
         const yaxis = cladeIdx === 0 ? "y" : `y${cladeIdx + 1}`;
 
-        // Scale marker size by total count
+        // Scale marker size by total count (keep minimum 4px so zero-data points remain hoverable)
         const sizes = cladeTargetData.total.map(t => Math.min(Math.max(Math.sqrt(t) * 1.5, 4), 20));
 
         // Build customdata array with count and total for each point
         const customData = cladeTargetData.count.map((c, i) => [c, cladeTargetData.total[i]]);
+
+        // Per-point colors: transparent for zero-total points, normal style color otherwise
+        const isZero = cladeTargetData.total.map(t => t === 0);
+        const markerColors = isZero.map(z => z ? "rgba(0,0,0,0)" : style.color);
+        const lineColors   = isZero.map(z => z ? "rgba(0,0,0,0)" : (style.line.color || style.color));
 
         traces.push({
           x: targetData.data.target_date,
@@ -859,8 +864,8 @@ buildTraces = () => {
           legendgroup: legendGroup,
           showlegend: cladeIdx === 0 && isFirstVersion,
           marker: {
-            color: style.color,
-            line: style.line,
+            color: markerColors,
+            line: { ...style.line, color: lineColors },
             opacity: version === "round-open" ? 0.7 : 0.5,
             size: sizes
           },

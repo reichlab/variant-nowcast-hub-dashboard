@@ -562,7 +562,7 @@
     },
     "2026-03-18": {
       "round_open": "2026-03-16",
-      "latest": "2026-04-02",
+      "latest": "2026-03-24",
       "round_closed": false
     },
     "2026-03-25": {
@@ -572,12 +572,12 @@
     },
     "2026-04-01": {
       "round_open": "2026-03-30",
-      "latest": "2026-04-02",
+      "latest": "2026-04-03",
       "round_closed": false
     }
   },
   "intervals": [50, 80, 95],
   "default_interval": 80,
   "current_nowcast_date": "2026-04-01",
-  "last_updated": "2026-04-02 15:23:22.006953"
+  "last_updated": "2026-04-03 18:34:41.687002"
 }

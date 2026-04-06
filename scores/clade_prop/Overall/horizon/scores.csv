@@ -1,4 +1,4 @@
-"model_id","energy_score","brier_score_point","brier_score_dist","interval_coverage_50","interval_coverage_90","horizon","n"
+"model_id","Energy Score","Brier Score Point","Brier Score Dist","Interval Coverage 50","Interval Coverage 90","horizon","n"
 "CADPH-CATaLog",NA,0.310201885383395,NA,NA,NA,-31,17
 "CADPH-CATaMaran",NA,0.251944733953509,NA,NA,NA,-31,2
 "Hub-baseline",0.898457110871013,0.307062381042638,0.30729519333216,0.911913357400722,0.972563176895307,-31,466

@@ -3,11 +3,11 @@ rounds_idx: 0
 targets:
 - target_id: clade_prop
   metrics:
-  - energy_score
-  - brier_score_point
-  - brier_score_dist
-  - interval_coverage_50
-  - interval_coverage_90
+  - Energy Score
+  - Brier Score Point
+  - Brier Score Dist
+  - Interval Coverage 50
+  - Interval Coverage 90
   disaggregate_by:
   - location
   - nowcast_date

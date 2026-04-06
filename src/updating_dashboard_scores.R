@@ -206,4 +206,3 @@ if(!dir.exists(model_path)){
   dir.create(model_path, recursive = T)
 }
 write.csv(all_data, file.path(model_path, "scores.csv"), row.names=FALSE)
-test <- read.csv(file.path(model_path, "scores.csv"), check.names = FALSE)

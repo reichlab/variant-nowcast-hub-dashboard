@@ -16,8 +16,10 @@ coverages <- coverages %>%
   summarise(interval_coverage = ifelse(all(interval_coverage == 1), 1, 0))
 summaries_nowcast_date <- scores %>%
   group_by(model_id, nowcast_date) %>%
-  summarise(energy_score = mean(energy, na.rm = T),
-            brier_score_point = mean(brier_point, na.rm = T),brier_score_dist = mean(brier_dist, na.rm = T),  n = max(sum(!is.na(energy)),sum(!is.na(brier_point))))
+  summarise("Energy Score"      = mean(energy, na.rm = T),
+            "Brier Score Point" = mean(brier_point, na.rm = T),
+            "Brier Score Dist"  = mean(brier_dist, na.rm = T),
+            n = max(sum(!is.na(energy)), sum(!is.na(brier_point))))
 quantiles_nowcast_date <- coverages %>%
   group_by(model_id,nowcast_date, interval_range) %>%
   summarise(interval_coverage_mean = mean(interval_coverage, na.rm = T))
@@ -27,6 +29,10 @@ quantiles_wide_nowcast_date <- quantiles_nowcast_date %>%
     names_from = interval_range,
     values_from = interval_coverage_mean,
     names_prefix = "interval_coverage_"
+  ) %>%
+  dplyr::rename(
+    "Interval Coverage 50" = interval_coverage_50,
+    "Interval Coverage 90" = interval_coverage_90
   )
 all_data <- left_join(summaries_nowcast_date, quantiles_wide_nowcast_date, by = c("model_id", "nowcast_date"))
 all_data <- all_data %>%
@@ -39,8 +45,10 @@ write.csv(all_data, file.path(model_path, "scores.csv"), row.names=FALSE)
 # scores by location
 summaries_location <- scores %>%
   group_by(model_id, location) %>%
-  summarise(energy_score = mean(energy, na.rm = T),
-            brier_score_point = mean(brier_point, na.rm = T),brier_score_dist = mean(brier_dist, na.rm = T),  n = max(sum(!is.na(energy)),sum(!is.na(brier_point))))
+  summarise("Energy Score"      = mean(energy, na.rm = T),
+            "Brier Score Point" = mean(brier_point, na.rm = T),
+            "Brier Score Dist"  = mean(brier_dist, na.rm = T),
+            n = max(sum(!is.na(energy)), sum(!is.na(brier_point))))
 quantiles_location <- coverages %>%
   group_by(model_id,location, interval_range) %>%
   summarise(interval_coverage_mean = mean(interval_coverage, na.rm = T))
@@ -50,6 +58,10 @@ quantiles_wide_location <- quantiles_location %>%
     names_from = interval_range,
     values_from = interval_coverage_mean,
     names_prefix = "interval_coverage_"
+  ) %>%
+  dplyr::rename(
+    "Interval Coverage 50" = interval_coverage_50,
+    "Interval Coverage 90" = interval_coverage_90
   )
 all_data <- left_join(summaries_location, quantiles_wide_location, by = c("model_id", "location"))
 all_data <- all_data %>%
@@ -79,9 +91,9 @@ for(h in 1:length(horizons)){
   summaries <- scores_horizon %>%
     group_by(model_id) %>%
     summarise(
-      energy_score = mean(energy, na.rm = TRUE),
-      brier_score_point = mean(brier_point, na.rm = TRUE),
-      brier_score_dist = mean(brier_dist, na.rm = TRUE),
+      "Energy Score"      = mean(energy, na.rm = TRUE),
+      "Brier Score Point" = mean(brier_point, na.rm = TRUE),
+      "Brier Score Dist"  = mean(brier_dist, na.rm = TRUE),
       n = max(sum(!is.na(energy)), sum(!is.na(brier_point))),
       .groups = "drop"
     )
@@ -99,6 +111,10 @@ for(h in 1:length(horizons)){
       names_from = interval_range,
       values_from = interval_coverage_mean,
       names_prefix = "interval_coverage_"
+    ) %>%
+    dplyr::rename(
+      "Interval Coverage 50" = interval_coverage_50,
+      "Interval Coverage 90" = interval_coverage_90
     )
 
   all_data <- left_join(summaries, quantiles_wide, by = "model_id")
@@ -117,7 +133,7 @@ if(!dir.exists(model_path)){
 write.csv(all_horizons, file.path(model_path, "scores.csv"), row.names=FALSE)
 # doing the same for target dates
 max_date <- max(scores$target_date)
-old_target_date_scores <- read.csv("../scores/clade_prop/Overall/target_date/scores.csv")
+old_target_date_scores <- read.csv("../scores/clade_prop/Overall/target_date/scores.csv", check.names = FALSE)
 #accounting for the overlap in dates
 min_date <- as.Date(max(old_target_date_scores$target_date)) -31 + 7
 # removing the dates that need to be updated
@@ -129,8 +145,10 @@ for(tar_date in target_dates){
   coverages_date <- filter(coverages, target_date == as.Date(tar_date))
   summaries <- scores_date %>%
     group_by(model_id) %>%
-    summarise(energy_score = mean(energy, na.rm = T),
-              brier_score_point = mean(brier_point, na.rm = T),brier_score_dist = mean(brier_dist, na.rm = T),  n = max(sum(!is.na(energy)),sum(!is.na(brier_point))))
+    summarise("Energy Score"      = mean(energy, na.rm = T),
+              "Brier Score Point" = mean(brier_point, na.rm = T),
+              "Brier Score Dist"  = mean(brier_dist, na.rm = T),
+              n = max(sum(!is.na(energy)), sum(!is.na(brier_point))))
   quantiles <- coverages_date %>%
     group_by(model_id, interval_range) %>%
     summarise(interval_coverage_mean = mean(interval_coverage, na.rm = T))
@@ -140,6 +158,10 @@ for(tar_date in target_dates){
       names_from = interval_range,
       values_from = interval_coverage_mean,
       names_prefix = "interval_coverage_"
+    ) %>%
+    dplyr::rename(
+      "Interval Coverage 50" = interval_coverage_50,
+      "Interval Coverage 90" = interval_coverage_90
     )
   all_data <- left_join(summaries, quantiles_wide, by = "model_id")
   all_data$target_date <- rep(as.Date(tar_date), times = length(all_data$n) )
@@ -158,8 +180,10 @@ write.csv(all_target_dates, file.path(model_path, "scores.csv"), row.names=FALSE
 # obtaining the Overall scores
 summaries <- scores %>%
   group_by(model_id) %>%
-  summarise(energy_score = mean(energy, na.rm = T),
-            brier_score_point = mean(brier_point, na.rm = T),brier_score_dist = mean(brier_dist, na.rm = T),  n = max(sum(!is.na(energy)),sum(!is.na(brier_point))))
+  summarise("Energy Score"      = mean(energy, na.rm = T),
+            "Brier Score Point" = mean(brier_point, na.rm = T),
+            "Brier Score Dist"  = mean(brier_dist, na.rm = T),
+            n = max(sum(!is.na(energy)), sum(!is.na(brier_point))))
 quantiles <- coverages %>%
   group_by(model_id, interval_range) %>%
   summarise(interval_coverage_mean = mean(interval_coverage, na.rm = T))
@@ -169,6 +193,10 @@ quantiles_wide <- quantiles %>%
     names_from = interval_range,
     values_from = interval_coverage_mean,
     names_prefix = "interval_coverage_"
+  ) %>%
+  dplyr::rename(
+    "Interval Coverage 50" = interval_coverage_50,
+    "Interval Coverage 90" = interval_coverage_90
   )
 all_data <- left_join(summaries, quantiles_wide, by = "model_id")
 all_data <- all_data %>%
@@ -178,4 +206,3 @@ if(!dir.exists(model_path)){
   dir.create(model_path, recursive = T)
 }
 write.csv(all_data, file.path(model_path, "scores.csv"), row.names=FALSE)
-test <- read.csv(file.path(model_path, "scores.csv"))

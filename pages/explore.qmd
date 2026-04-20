@@ -271,6 +271,39 @@ viewof selectedDataVersions = {
 
 <div class="control-group">
 
+**Scale**
+
+```{ojs}
+//| echo: false
+viewof useLogOdds = Inputs.toggle({
+  label: "Log-odds scale",
+  value: false
+})
+```
+
+```{ojs}
+//| echo: false
+viewof baselineClade = {
+  const wrapper = html`<div></div>`;
+  wrapper.style.display = useLogOdds ? "block" : "none";
+  const select = Inputs.select(selectedClades || [], {
+    label: "Baseline clade",
+    value: selectedClades ? selectedClades[selectedClades.length - 1] : null
+  });
+  wrapper.appendChild(select);
+  wrapper.value = select.value;
+  select.addEventListener('input', () => {
+    wrapper.value = select.value;
+    wrapper.dispatchEvent(new Event('input'));
+  });
+  return wrapper;
+}
+```
+
+</div>
+
+<div class="control-group">
+
 **Intervals**
 
 ```{ojs}
@@ -674,6 +707,17 @@ modelColorMap = {
   return map;
 }
 
+// Log-odds transform: log(p_clade / p_baseline)
+logOddsTransform = (values, baselineValues) => {
+  return values.map((p, i) => {
+    const b = baselineValues[i];
+    if (p === null || p === undefined || isNaN(p)) return null;
+    if (b === null || b === undefined || isNaN(b) || b <= 0) return null;
+    if (p <= 0) return -10;
+    return Math.log(p / b);
+  });
+}
+
 // Get quantile column names based on interval level and type
 getQuantileCols = (level, type) => {
   const prefix = type === "prediction" ? "multinomial_q" : "q";
@@ -715,7 +759,9 @@ buildTraces = () => {
 
       // Mean line - include interval bounds in tooltip if available
       let meanCustomData = null;
-      let meanHoverTemplate = `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<extra></extra>`;
+      let meanHoverTemplate = useLogOdds
+        ? `${model}<br>Date: %{x}<br>Log-odds vs ${baselineClade}: %{y:.2f}<extra></extra>`
+        : `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<extra></extra>`;
 
       if (shouldShowIntervals && qCols) {
         const lowerData = cladeData[qCols.lower];
@@ -734,13 +780,17 @@ buildTraces = () => {
               return `${intervalLevel}% ${intervalAbbrev}: NA`;
             }
           });
-          meanHoverTemplate = `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>%{customdata}<extra></extra>`;
+          meanHoverTemplate = useLogOdds
+              ? `${model}<br>Date: %{x}<br>Log-odds vs ${baselineClade}: %{y:.2f}<br>%{customdata}<extra></extra>`
+              : `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>%{customdata}<extra></extra>`;
         }
       }
 
       traces.push({
         x: modelData.target_date,
-        y: cladeData.mean,
+        y: useLogOdds
+          ? logOddsTransform(cladeData.mean, modelData[baselineClade]?.mean)
+          : cladeData.mean,
         type: "scatter",
         mode: "lines",
         name: model,
@@ -755,8 +805,15 @@ buildTraces = () => {
 
       // Prediction interval ribbon (only if intervals are enabled and qCols exists)
       if (shouldShowIntervals && qCols) {
-        const lowerData = cladeData[qCols.lower];
-        const upperData = cladeData[qCols.upper];
+        const rawLowerData = cladeData[qCols.lower];
+        const rawUpperData = cladeData[qCols.upper];
+        const baselineData = modelData[baselineClade];
+        const lowerData = useLogOdds
+          ? logOddsTransform(rawLowerData, baselineData?.[qCols.lower])
+          : rawLowerData;
+        const upperData = useLogOdds
+          ? logOddsTransform(rawUpperData, baselineData?.[qCols.upper])
+          : rawUpperData;
         // Check if interval data exists and has valid (non-NA) values
         const hasValidIntervals = lowerData && upperData &&
           lowerData.some(v => v !== null && v !== "NA" && !isNaN(v));
@@ -857,7 +914,9 @@ buildTraces = () => {
 
         traces.push({
           x: targetData.data.target_date,
-          y: cladeTargetData.proportion,
+          y: useLogOdds
+            ? logOddsTransform(cladeTargetData.proportion, targetData.data[baselineClade]?.proportion)
+            : cladeTargetData.proportion,
           type: "scatter",
           mode: "markers",
           name: style.name,
@@ -872,7 +931,9 @@ buildTraces = () => {
           customdata: customData,
           xaxis: xaxis,
           yaxis: yaxis,
-          hovertemplate: `${style.name}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
+          hovertemplate: useLogOdds
+            ? `${style.name}<br>Date: %{x}<br>Log-odds vs ${baselineClade}: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
+            : `${style.name}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
         });
       });
       isFirstVersion = false;
@@ -932,8 +993,9 @@ buildLayout = () => {
     layout[yKey] = {
       domain: yDomain,
       anchor: i === 0 ? "x" : `x${i + 1}`,
-      range: [0, 1],
-      title: col === 0 ? "Proportion" : ""
+      range: useLogOdds ? null : [0, 1],
+      autorange: useLogOdds ? true : false,
+      title: col === 0 ? (useLogOdds ? `Log-odds vs ${baselineClade}` : "Proportion") : ""
     };
 
     // Add clade label annotation - left-aligned above each subplot

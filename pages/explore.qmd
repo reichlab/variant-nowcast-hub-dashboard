@@ -281,25 +281,6 @@ viewof useLogOdds = Inputs.toggle({
 })
 ```
 
-```{ojs}
-//| echo: false
-viewof baselineClade = {
-  const wrapper = html`<div></div>`;
-  wrapper.style.display = useLogOdds ? "block" : "none";
-  const select = Inputs.select(selectedClades || [], {
-    label: "Baseline clade",
-    value: selectedClades ? selectedClades[selectedClades.length - 1] : null
-  });
-  wrapper.appendChild(select);
-  wrapper.value = select.value;
-  select.addEventListener('input', () => {
-    wrapper.value = select.value;
-    wrapper.dispatchEvent(new Event('input'));
-  });
-  return wrapper;
-}
-```
-
 </div>
 
 <div class="control-group">
@@ -707,16 +688,21 @@ modelColorMap = {
   return map;
 }
 
-// Log-odds transform: log(p_clade / p_baseline)
-logOddsTransform = (values, baselineValues) => {
-  return values.map((p, i) => {
-    const b = baselineValues[i];
+// Logit transform: log(p / (1 - p)), applied per-clade
+logit = (p) => Math.log(p / (1 - p))
+
+logitTransform = (values) => {
+  return values.map(p => {
     if (p === null || p === undefined || isNaN(p)) return null;
-    if (b === null || b === undefined || isNaN(b) || b <= 0) return null;
-    if (p <= 0) return -10;
-    return Math.log(p / b);
+    const clamped = Math.max(0.001, Math.min(0.999, p));
+    return logit(clamped);
   });
 }
+
+// Fixed probability ticks for the logit y-axis (matching Nextstrain style)
+logitTickVals = [0.01, 0.10, 0.50, 0.90, 0.99].map(logit)
+logitTickText  = ["0.01", "0.1", "0.5", "0.9", "0.99"]
+logitRange     = [logit(0.005), logit(0.995)]
 
 // Get quantile column names based on interval level and type
 getQuantileCols = (level, type) => {
@@ -760,7 +746,7 @@ buildTraces = () => {
       // Mean line - include interval bounds in tooltip if available
       let meanCustomData = null;
       let meanHoverTemplate = useLogOdds
-        ? `${model}<br>Date: %{x}<br>Log-odds vs ${baselineClade}: %{y:.2f}<extra></extra>`
+        ? `${model}<br>Date: %{x}<br>Logit(proportion): %{y:.2f}<extra></extra>`
         : `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<extra></extra>`;
 
       if (shouldShowIntervals && qCols) {
@@ -781,16 +767,14 @@ buildTraces = () => {
             }
           });
           meanHoverTemplate = useLogOdds
-              ? `${model}<br>Date: %{x}<br>Log-odds vs ${baselineClade}: %{y:.2f}<br>%{customdata}<extra></extra>`
+              ? `${model}<br>Date: %{x}<br>Logit(proportion): %{y:.2f}<br>%{customdata}<extra></extra>`
               : `${model}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>%{customdata}<extra></extra>`;
         }
       }
 
       traces.push({
         x: modelData.target_date,
-        y: useLogOdds
-          ? logOddsTransform(cladeData.mean, modelData[baselineClade]?.mean)
-          : cladeData.mean,
+        y: useLogOdds ? logitTransform(cladeData.mean) : cladeData.mean,
         type: "scatter",
         mode: "lines",
         name: model,
@@ -807,13 +791,8 @@ buildTraces = () => {
       if (shouldShowIntervals && qCols) {
         const rawLowerData = cladeData[qCols.lower];
         const rawUpperData = cladeData[qCols.upper];
-        const baselineData = modelData[baselineClade];
-        const lowerData = useLogOdds
-          ? logOddsTransform(rawLowerData, baselineData?.[qCols.lower])
-          : rawLowerData;
-        const upperData = useLogOdds
-          ? logOddsTransform(rawUpperData, baselineData?.[qCols.upper])
-          : rawUpperData;
+        const lowerData = useLogOdds ? logitTransform(rawLowerData) : rawLowerData;
+        const upperData = useLogOdds ? logitTransform(rawUpperData) : rawUpperData;
         // Check if interval data exists and has valid (non-NA) values
         const hasValidIntervals = lowerData && upperData &&
           lowerData.some(v => v !== null && v !== "NA" && !isNaN(v));
@@ -914,9 +893,7 @@ buildTraces = () => {
 
         traces.push({
           x: targetData.data.target_date,
-          y: useLogOdds
-            ? logOddsTransform(cladeTargetData.proportion, targetData.data[baselineClade]?.proportion)
-            : cladeTargetData.proportion,
+          y: useLogOdds ? logitTransform(cladeTargetData.proportion) : cladeTargetData.proportion,
           type: "scatter",
           mode: "markers",
           name: style.name,
@@ -932,7 +909,7 @@ buildTraces = () => {
           xaxis: xaxis,
           yaxis: yaxis,
           hovertemplate: useLogOdds
-            ? `${style.name}<br>Date: %{x}<br>Log-odds vs ${baselineClade}: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
+            ? `${style.name}<br>Date: %{x}<br>Logit(proportion): %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
             : `${style.name}<br>Date: %{x}<br>Proportion: %{y:.2f}<br>Count: %{customdata[0]}/%{customdata[1]}<extra></extra>`
         });
       });
@@ -993,9 +970,10 @@ buildLayout = () => {
     layout[yKey] = {
       domain: yDomain,
       anchor: i === 0 ? "x" : `x${i + 1}`,
-      range: useLogOdds ? null : [0, 1],
-      autorange: useLogOdds ? true : false,
-      title: col === 0 ? (useLogOdds ? `Log-odds vs ${baselineClade}` : "Proportion") : ""
+      range: useLogOdds ? logitRange : [0, 1],
+      tickvals: useLogOdds ? logitTickVals : undefined,
+      ticktext: useLogOdds ? logitTickText : undefined,
+      title: col === 0 ? "Proportion" : ""
     };
 
     // Add clade label annotation - left-aligned above each subplot

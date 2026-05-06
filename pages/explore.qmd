@@ -342,6 +342,9 @@ viewof intervalLevel = {
 predictionIntervalsAvailable = selectedDataVersions && selectedDataVersions.includes("latest")
 
 viewof intervalType = {
+  const savedValue = window._dashboardState?.intervalSettings?.intervalType;
+  const initialValue = savedValue || "confidence";
+
   const container = html`<div style="line-height: 1.4;"></div>`;
 
   const options = [
@@ -352,18 +355,24 @@ viewof intervalType = {
   options.forEach(opt => {
     const label = html`<label style="display: block; margin-bottom: 0.1rem; ${opt.disabled ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;'}">
       <input type="radio" name="intervalType" value="${opt.value}"
-             ${opt.value === "confidence" ? 'checked' : ''}
+             ${opt.value === initialValue ? 'checked' : ''}
              ${opt.disabled ? 'disabled' : ''}>
       ${opt.label}
     </label>`;
     container.appendChild(label);
   });
 
-  container.value = "confidence";
+  container.value = initialValue;
 
   container.querySelectorAll('input').forEach(input => {
     input.addEventListener('change', () => {
       container.value = container.querySelector('input:checked')?.value || "confidence";
+      if (window._dashboardState) {
+        if (!window._dashboardState.intervalSettings) {
+          window._dashboardState.intervalSettings = {};
+        }
+        window._dashboardState.intervalSettings.intervalType = container.value;
+      }
       container.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
@@ -371,8 +380,10 @@ viewof intervalType = {
   return container;
 }
 
-// Use selected interval type (PI only works when available)
-effectiveIntervalType = intervalType
+// Use selected interval type; fall back to CI if PI saved but not currently available
+effectiveIntervalType = (intervalType === "prediction" && !predictionIntervalsAvailable)
+  ? "confidence"
+  : intervalType
 ```
 
 </div>
@@ -535,11 +546,14 @@ viewof selectedClades = {
     container.appendChild(label);
   });
 
-  // Update value helper - also saves to window state
+  // Update value helper - preserves selections for clades not in current date
   const updateValue = () => {
-    container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    const currentlyChecked = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    container.value = currentlyChecked;
     if (window._dashboardState) {
-      window._dashboardState.cladeSelections = container.value;
+      const previousSelections = window._dashboardState.cladeSelections || [];
+      const unavailableSelections = previousSelections.filter(c => !clades.includes(c));
+      window._dashboardState.cladeSelections = [...currentlyChecked, ...unavailableSelections];
     }
     container.dispatchEvent(new Event('input'));
   };
@@ -554,11 +568,8 @@ viewof selectedClades = {
     updateValue();
   };
 
-  // Initial value and save to state
+  // Initial value only - do not overwrite saved state (would erase off-date selections)
   container.value = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
-  if (window._dashboardState) {
-    window._dashboardState.cladeSelections = container.value;
-  }
   container.oninput = updateValue;
 
   return container;

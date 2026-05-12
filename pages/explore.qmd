@@ -347,16 +347,16 @@ viewof intervalType = {
 
   const container = html`<div style="line-height: 1.4;"></div>`;
 
-  const options = [
-    { value: "confidence", label: "Confidence intervals", disabled: !showIntervals },
-    { value: "prediction", label: "Prediction intervals", disabled: !showIntervals || !predictionIntervalsAvailable }
-  ];
-
-  options.forEach(opt => {
-    const label = html`<label style="display: block; margin-bottom: 0.1rem; ${opt.disabled ? 'opacity: 0.4; cursor: not-allowed;' : 'cursor: pointer;'}">
+  // No reference to predictionIntervalsAvailable or showIntervals here —
+  // disabled state is handled by the reactive cell below so this widget
+  // is never rebuilt on date/location changes.
+  [
+    { value: "confidence", label: "Confidence intervals" },
+    { value: "prediction", label: "Prediction intervals" }
+  ].forEach(opt => {
+    const label = html`<label style="display: block; margin-bottom: 0.1rem; cursor: pointer;">
       <input type="radio" name="intervalType" value="${opt.value}"
-             ${opt.value === initialValue ? 'checked' : ''}
-             ${opt.disabled ? 'disabled' : ''}>
+             ${opt.value === initialValue ? 'checked' : ''}>
       ${opt.label}
     </label>`;
     container.appendChild(label);
@@ -377,7 +377,38 @@ viewof intervalType = {
     });
   });
 
+  // Store reference so the reactive sync cell below can update disabled state
+  // without rebuilding this widget.
+  window._intervalTypeContainer = container;
+
   return container;
+}
+
+// Reactively update disabled state of intervalType radios without rebuilding the widget.
+// Runs when showIntervals or predictionIntervalsAvailable changes.
+{
+  const container = window._intervalTypeContainer;
+  if (!container) return;
+
+  container.querySelectorAll('input[type="radio"]').forEach(radio => {
+    const isDisabled = !showIntervals ||
+      (radio.value === "prediction" && !predictionIntervalsAvailable);
+    radio.disabled = isDisabled;
+    const label = radio.closest('label') || radio.parentElement;
+    if (label) {
+      label.style.opacity = isDisabled ? '0.4' : '1';
+      label.style.cursor  = isDisabled ? 'not-allowed' : 'pointer';
+    }
+    // If PI is currently selected but just became unavailable, switch to CI
+    if (isDisabled && radio.value === "prediction" && radio.checked) {
+      radio.checked = false;
+      const ciRadio = container.querySelector('input[value="confidence"]');
+      if (ciRadio && !ciRadio.disabled) {
+        ciRadio.checked = true;
+        ciRadio.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  });
 }
 
 // Use selected interval type; fall back to CI if PI saved but not currently available

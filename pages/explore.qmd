@@ -692,6 +692,7 @@ modelColorMap = {
 logit = (p) => Math.log(p / (1 - p))
 
 logitTransform = (values) => {
+  if (!values) return values;
   return values.map(p => {
     if (p === null || p === undefined || isNaN(p)) return null;
     const clamped = Math.max(0.001, Math.min(0.999, p));

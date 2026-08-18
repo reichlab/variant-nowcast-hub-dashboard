@@ -122,3 +122,13 @@ pages:
       href: "2024-12-04-report.md"
     - text: "2024-11-27"
       href: "2024-11-27-report.md"
+
+html:
+  include-after-body:
+    - text: |
+        <!-- Privacy-friendly analytics by Plausible -->
+        <script async src="https://plausible.io/js/pa-DOosbUzSYYO66nV9P5iOt.js"></script>
+        <script>
+          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+          plausible.init()
+        </script>
